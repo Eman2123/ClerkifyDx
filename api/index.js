@@ -42646,12 +42646,12 @@ var config = {
   isProd: process.env.NODE_ENV === "production",
   // Meta Model API (Muse Spark). Docs: https://dev.meta.ai/docs
   ai: {
-    baseUrl: (process.env.MODEL_API_BASE_URL ?? "https://api.meta.ai/v1").replace(/\/$/, ""),
+    baseUrl: (process.env.MODEL_API_BASE_URL?.trim() || "https://api.meta.ai/v1").replace(/\/$/, ""),
     apiKey: process.env.MODEL_API_KEY ?? "",
     // "muse-spark-1.3" = Standard mode (prompts are not used for training). Don't use the "-contributor" IDs with patient data.
-    model: process.env.MODEL_NAME ?? "muse-spark-1.3",
+    model: process.env.MODEL_NAME?.trim() || "muse-spark-1.3",
     // Optional: minimal | low | medium | high | xhigh | max. Unset = model default.
-    reasoningEffort: process.env.MODEL_REASONING_EFFORT ?? "",
+    reasoningEffort: process.env.MODEL_REASONING_EFFORT?.trim() ?? "",
     mock: process.env.MOCK_LLM === "true" || !process.env.MODEL_API_KEY
   }
 };
@@ -43214,24 +43214,39 @@ async function chatVision(system, text, imageDataUrl2, opts = {}) {
   );
 }
 async function complete(messages, opts) {
+  const maxTokens = opts.maxTokens ?? 800;
+  const first = await attempt(messages, opts, maxTokens, config.ai.reasoningEffort);
+  if (first.text) return first.text;
+  console.error("Meta Model API empty response, retrying:", first.debug);
+  const second = await attempt(messages, opts, Math.max(maxTokens * 4, 3e3), "minimal");
+  if (second.text) return second.text;
+  throw new Error(`Meta Model API returned an empty response (${second.debug})`);
+}
+async function attempt(messages, opts, maxTokens, effort) {
   const body = {
     model: config.ai.model,
     messages,
     temperature: opts.temperature ?? 0.4,
-    max_tokens: opts.maxTokens ?? 800
+    max_tokens: maxTokens
   };
-  if (config.ai.reasoningEffort) body.reasoning_effort = config.ai.reasoningEffort;
+  if (effort) body.reasoning_effort = effort;
   let res = await post(opts.json ? { ...body, response_format: { type: "json_object" } } : body);
-  if (opts.json && res.status === 400) res = await post(body);
+  if (res.status === 400) {
+    const errBody = await res.clone().text().catch(() => "");
+    console.error("Meta Model API 400, retrying without optional params:", errBody.slice(0, 300));
+    const { response_format: _rf, reasoning_effort: _re, ...plain } = { ...body, response_format: void 0 };
+    res = await post(plain);
+  }
   if (!res.ok) {
     const errBody = await res.text().catch(() => "");
     throw new Error(`Meta Model API error ${res.status}: ${errBody.slice(0, 300)}`);
   }
   const data = await res.json();
-  const raw = data.choices?.[0]?.message?.content;
-  const text = Array.isArray(raw) ? raw.map((p) => p.text ?? "").join("") : raw;
-  if (!text) throw new Error("Meta Model API returned an empty response");
-  return text.trim();
+  const choice = data.choices?.[0];
+  const raw = choice?.message?.content;
+  const text = (Array.isArray(raw) ? raw.map((p) => p.text ?? "").join("") : raw) ?? "";
+  const debug = `model=${config.ai.model} finish=${choice?.finish_reason} max_tokens=${maxTokens} usage=${JSON.stringify(data.usage ?? null)}`;
+  return { text: text.trim(), debug };
 }
 function post(payload) {
   return fetch(`${config.ai.baseUrl}/chat/completions`, {
@@ -45556,7 +45571,8 @@ app.post("/api/triage/:id/message", optionalAuth, aiLimit, ah(async (req, res) =
     const reply = await triageReply(session, message);
     await triages.save(session);
     res.json({ emergency: session.emergency, message: reply });
-  } catch {
+  } catch (err) {
+    console.error("LLM call failed:", err instanceof Error ? err.message : err);
     res.status(503).json({
       error: "AI is temporarily unavailable. If this is urgent, go to the nearest hospital.",
       emergencyGuidance: EMERGENCY_MESSAGE[session.language]
