@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { api, setToken, type User } from "../api";
 
 const DEMOS = [
@@ -16,14 +16,6 @@ export default function Landing({ demo, onAuth, onPatient, onSignup }: { demo: b
     catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
-  const stage = useRef<HTMLDivElement>(null);
-  function tilt(e: React.MouseEvent) {
-    const el = stage.current; if (!el) return;
-    const r = el.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
-    el.style.setProperty("--ry", `${x * 22}deg`); el.style.setProperty("--rx", `${-y * 16}deg`);
-  }
-  function untilt() { stage.current?.style.setProperty("--ry", "-14deg"); stage.current?.style.setProperty("--rx", "6deg"); }
   return (
     <>
       <section className="hero">
@@ -45,9 +37,7 @@ export default function Landing({ demo, onAuth, onPatient, onSignup }: { demo: b
             {error && <p className="error">{error}</p>}
             <div className="chips"><span>English + Nigerian Pidgin</span><span>Built on Meta Muse Spark</span><span>AI never diagnoses</span></div>
           </div>
-          <div className="scene" ref={stage} onMouseMove={tilt} onMouseLeave={untilt}>
-          <span className="layer l1" aria-hidden="true" /><span className="layer l2" aria-hidden="true" />
-          <span className="float f1" aria-hidden="true">🩺</span><span className="float f2" aria-hidden="true">❤️</span><span className="float f3" aria-hidden="true">💊</span>
+          <div className="scene">
           <div className="sheet" aria-label="Example of a simulated clerking">
             <div className="sheet-h"><span>Case: Child with fever</span><span>Paediatrics · Simple</span></div>
             <div className="sheet-b">

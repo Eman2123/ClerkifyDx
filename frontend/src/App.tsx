@@ -53,6 +53,14 @@ export default function App() {
     <button className={tab === t ? "active" : ""} aria-current={tab === t ? "page" : undefined} onClick={() => setTab(t)}>{label}</button>
   );
 
+  if (tab === "auth") {
+    return (
+      <ErrorBoundary resetKey={tab}>
+        <Auth onAuth={enter} onSkip={() => setTab("patient")} onBack={() => setTab("landing")} demo={demo} initialMode={authMode} key={authMode} />
+      </ErrorBoundary>
+    );
+  }
+
   return (
     <div className="app">
       <a className="skip" href="#main">Skip to content</a>
@@ -87,10 +95,9 @@ export default function App() {
       {user?.role === "doctor" && !user.verified && (
         <div className="banner">Your doctor account is pending verification. Professional features are not enabled yet.</div>
       )}
-      <main id="main" tabIndex={-1} className={tab === "landing" || tab === "auth" ? "wide" : ""}>
+      <main id="main" tabIndex={-1} className={tab === "landing" ? "wide" : ""}>
         <ErrorBoundary resetKey={tab}>
           {tab === "landing" && <Landing demo={demo} onAuth={enter} onPatient={() => setTab("patient")} onSignup={() => goAuth("register")} />}
-          {tab === "auth" && <Auth onAuth={enter} onSkip={() => setTab("patient")} demo={demo} initialMode={authMode} key={authMode} />}
           {tab === "student" && isLearner && <Student language={language} />}
           {tab === "history" && isLearner && <History />}
           {tab === "patient" && <Patient language={language} user={user} />}
@@ -99,7 +106,7 @@ export default function App() {
           {tab === "admin" && user?.role === "admin" && <Admin />}
         </ErrorBoundary>
       </main>
-      {(tab === "landing" || tab === "auth") && <footer className="footer">
+      {tab === "landing" && <footer className="footer">
         <div className="footer-in">
           <div className="f-brand">
             <span className="logo-static"><Logo /><Wordmark /></span>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api, setToken, type Role, type User } from "../api";
-import { Check } from "../ui";
+import { Check, Logo, Wordmark } from "../ui";
 
 const DEMOS = [
   { label: "Try as student", email: "student@clerkifydx.demo" },
@@ -14,7 +14,7 @@ const ROLES: { id: Exclude<Role, "admin">; label: string }[] = [
   { id: "doctor", label: "Doctor (needs verification)" },
 ];
 
-export default function Auth({ onAuth, onSkip, demo, initialMode = "login" }: { onAuth: (u: User) => void; onSkip: () => void; demo?: boolean; initialMode?: "login" | "register" }) {
+export default function Auth({ onAuth, onSkip, onBack, demo, initialMode = "login" }: { onAuth: (u: User) => void; onSkip: () => void; onBack: () => void; demo?: boolean; initialMode?: "login" | "register" }) {
   const [mode, setMode] = useState<"login" | "register">(initialMode);
   const [f, setF] = useState({ name: "", email: "", password: "", role: "student" as Exclude<Role, "admin"> });
   const [error, setError] = useState("");
@@ -38,7 +38,7 @@ export default function Auth({ onAuth, onSkip, demo, initialMode = "login" }: { 
   return (
     <div className="auth">
       <aside className="auth-side">
-        <div className="cube-wrap" aria-hidden="true"><div className="cube"><i>Dx</i><i>🩺</i><i>❤️</i><i>🧬</i><i>💊</i><i>+</i></div></div>
+        <button type="button" className="auth-brand" onClick={onBack} aria-label="ClerkifyDx home"><Logo /><Wordmark /></button>
         <h2>Practise safely. Get care organised.</h2>
         <ul className="assure">
           <li><Check /><div><b>Students</b><span>Clerk an AI patient and see what you missed.</span></div></li>
@@ -48,6 +48,7 @@ export default function Auth({ onAuth, onSkip, demo, initialMode = "login" }: { 
         <p className="muted" style={{ color: "#b9d8c8", marginTop: "auto" }}>The AI never diagnoses. In an emergency, go to the nearest hospital.</p>
       </aside>
       <form className="auth-form" onSubmit={submit}>
+        <button type="button" className="auth-back" onClick={onBack}>&larr; Back to home</button>
         <h2>{mode === "login" ? "Welcome back" : "Create your account"}</h2>
         {mode === "register" && (
           <>
