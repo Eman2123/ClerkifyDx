@@ -39,29 +39,48 @@ export async function chatVision(system: string, text: string, imageDataUrl: str
 }
 
 async function complete(messages: unknown[], opts: CompletionOptions): Promise<string> {
+  const maxTokens = opts.maxTokens ?? 800;
+  const first = await attempt(messages, opts, maxTokens, config.ai.reasoningEffort);
+  if (first.text) return first.text;
+  // Reasoning models can spend the whole token budget thinking and return empty content.
+  // Retry once with a bigger budget and minimal reasoning.
+  console.error("Meta Model API empty response, retrying:", first.debug);
+  const second = await attempt(messages, opts, Math.max(maxTokens * 4, 3000), "minimal");
+  if (second.text) return second.text;
+  throw new Error(`Meta Model API returned an empty response (${second.debug})`);
+}
+
+async function attempt(messages: unknown[], opts: CompletionOptions, maxTokens: number, effort: string): Promise<{ text: string; debug: string }> {
   const body: Record<string, unknown> = {
     model: config.ai.model,
     messages,
     temperature: opts.temperature ?? 0.4,
-    max_tokens: opts.maxTokens ?? 800,
+    max_tokens: maxTokens,
   };
-  if (config.ai.reasoningEffort) body.reasoning_effort = config.ai.reasoningEffort;
+  if (effort) body.reasoning_effort = effort;
 
   // JSON is requested in the prompt and parsed tolerantly by parseJson(); response_format is a best-effort extra.
   let res = await post(opts.json ? { ...body, response_format: { type: "json_object" } } : body);
-  if (opts.json && res.status === 400) res = await post(body); // retry without response_format if rejected
+  if (res.status === 400) {
+    const errBody = await res.clone().text().catch(() => "");
+    console.error("Meta Model API 400, retrying without optional params:", errBody.slice(0, 300));
+    const { response_format: _rf, reasoning_effort: _re, ...plain } = { ...body, response_format: undefined } as Record<string, unknown>;
+    res = await post(plain);
+  }
 
   if (!res.ok) {
     const errBody = await res.text().catch(() => "");
     throw new Error(`Meta Model API error ${res.status}: ${errBody.slice(0, 300)}`);
   }
   const data = (await res.json()) as {
-    choices?: { message?: { content?: string | { type?: string; text?: string }[] | null } }[];
+    choices?: { finish_reason?: string; message?: { content?: string | { type?: string; text?: string }[] | null } }[];
+    usage?: unknown;
   };
-  const raw = data.choices?.[0]?.message?.content;
-  const text = Array.isArray(raw) ? raw.map((p) => p.text ?? "").join("") : raw;
-  if (!text) throw new Error("Meta Model API returned an empty response");
-  return text.trim();
+  const choice = data.choices?.[0];
+  const raw = choice?.message?.content;
+  const text = (Array.isArray(raw) ? raw.map((p) => p.text ?? "").join("") : raw) ?? "";
+  const debug = `model=${config.ai.model} finish=${choice?.finish_reason} max_tokens=${maxTokens} usage=${JSON.stringify(data.usage ?? null)}`;
+  return { text: text.trim(), debug };
 }
 
 function post(payload: Record<string, unknown>): Promise<Response> {
