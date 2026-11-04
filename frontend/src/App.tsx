@@ -9,7 +9,7 @@ import Doctor from "./pages/Doctor";
 import { MyConsultations } from "./pages/Consult";
 import { tr } from "./i18n";
 import Landing from "./pages/Landing";
-import { ErrorBoundary, Logo, Wordmark, initials } from "./ui";
+import { ErrorBoundary, Logo, ThemeToggle, Wordmark, initials, useTheme } from "./ui";
 
 type Tab = "landing" | "student" | "history" | "patient" | "consults" | "doctor" | "admin" | "auth";
 
@@ -20,6 +20,7 @@ export default function App() {
   const [language, setLanguage] = useState<Language>("en");
   const [mock, setMock] = useState<boolean | null>(null);
   const [demo, setDemo] = useState(false);
+  const [theme, setTheme] = useTheme();
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
 
   const isLearner = user?.role === "student" || user?.role === "intern";
@@ -56,7 +57,7 @@ export default function App() {
   if (tab === "auth") {
     return (
       <ErrorBoundary resetKey={tab}>
-        <Auth onAuth={enter} onSkip={() => setTab("patient")} onBack={() => setTab("landing")} demo={demo} initialMode={authMode} key={authMode} />
+        <Auth onAuth={enter} onSkip={() => setTab("patient")} onBack={() => setTab("landing")} demo={demo} initialMode={authMode} key={authMode} theme={theme} onTheme={setTheme} />
       </ErrorBoundary>
     );
   }
@@ -78,6 +79,7 @@ export default function App() {
           <button aria-pressed={language === "en"} onClick={() => setLanguage("en")}>English</button>
           <button aria-pressed={language === "pcm"} onClick={() => setLanguage("pcm")}>Pidgin</button>
         </div>
+        <ThemeToggle theme={theme} onChange={setTheme} />
         {user ? (
           <div className="user">
             <span className="avatar" aria-hidden="true">{initials(user.name)}</span>

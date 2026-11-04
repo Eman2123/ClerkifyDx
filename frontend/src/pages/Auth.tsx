@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api, setToken, type Role, type User } from "../api";
-import { Check, Logo, Wordmark } from "../ui";
+import { Check, Logo, ThemeToggle, Wordmark, type Theme } from "../ui";
 
 const DEMOS = [
   { label: "Try as student", email: "student@clerkifydx.demo" },
@@ -14,7 +14,7 @@ const ROLES: { id: Exclude<Role, "admin">; label: string }[] = [
   { id: "doctor", label: "Doctor (needs verification)" },
 ];
 
-export default function Auth({ onAuth, onSkip, onBack, demo, initialMode = "login" }: { onAuth: (u: User) => void; onSkip: () => void; onBack: () => void; demo?: boolean; initialMode?: "login" | "register" }) {
+export default function Auth({ onAuth, onSkip, onBack, demo, initialMode = "login", theme, onTheme }: { theme: Theme; onTheme: (t: Theme) => void; onAuth: (u: User) => void; onSkip: () => void; onBack: () => void; demo?: boolean; initialMode?: "login" | "register" }) {
   const [mode, setMode] = useState<"login" | "register">(initialMode);
   const [f, setF] = useState({ name: "", email: "", password: "", role: "student" as Exclude<Role, "admin"> });
   const [error, setError] = useState("");
@@ -37,6 +37,7 @@ export default function Auth({ onAuth, onSkip, onBack, demo, initialMode = "logi
 
   return (
     <div className="auth">
+      <div className="auth-top"><ThemeToggle theme={theme} onChange={onTheme} /></div>
       <aside className="auth-side">
         <button type="button" className="auth-brand" onClick={onBack} aria-label="ClerkifyDx home"><Logo /><Wordmark /></button>
         <h2>Practise safely. Get care organised.</h2>
@@ -45,11 +46,13 @@ export default function Auth({ onAuth, onSkip, onBack, demo, initialMode = "logi
           <li><Check /><div><b>Patients</b><span>Describe symptoms once and share a clear summary with a verified doctor.</span></div></li>
           <li><Check /><div><b>Doctors</b><span>Review structured summaries after you accept a request.</span></div></li>
         </ul>
-        <p className="muted" style={{ color: "#b9d8c8", marginTop: "auto" }}>The AI never diagnoses. In an emergency, go to the nearest hospital.</p>
+        <p className="auth-note">The AI never diagnoses. In an emergency, go to the nearest hospital.</p>
       </aside>
+      <div className="auth-wrap">
       <form className="auth-form" onSubmit={submit}>
         <button type="button" className="auth-back" onClick={onBack}>&larr; Back to home</button>
         <h2>{mode === "login" ? "Welcome back" : "Create your account"}</h2>
+        <p className="sub">{mode === "login" ? "Log in to continue your practice or intake." : "Join as a student, patient or doctor in under a minute."}</p>
         {mode === "register" && (
           <>
             <label>Full name
@@ -70,9 +73,9 @@ export default function Auth({ onAuth, onSkip, onBack, demo, initialMode = "logi
           <input type="password" required minLength={mode === "register" ? 8 : 1} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} autoComplete={mode === "login" ? "current-password" : "new-password"} />
         </label>
         {error && <p className="error">{error}</p>}
-        <div className="row">
-          <button className="big" disabled={busy}>{mode === "login" ? "Log in" : "Create account"}</button>
-          <button type="button" className="secondary" onClick={() => setMode(mode === "login" ? "register" : "login")}>
+        <button className="big" disabled={busy}>{mode === "login" ? "Log in" : "Create account"}</button>
+        <div style={{ marginTop: 6 }}>
+          <button type="button" className="switch" onClick={() => setMode(mode === "login" ? "register" : "login")}>
             {mode === "login" ? "New here? Sign up" : "Have an account? Log in"}
           </button>
         </div>
@@ -88,6 +91,7 @@ export default function Auth({ onAuth, onSkip, onBack, demo, initialMode = "logi
           Feeling unwell now? <a href="#" onClick={(e) => { e.preventDefault(); onSkip(); }}>Use patient intake without an account</a>.
         </p>
       </form>
+      </div>
     </div>
   );
 }

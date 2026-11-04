@@ -1,9 +1,9 @@
-import { Component, type ReactNode } from "react";
+import { Component, useEffect, useState, type ReactNode } from "react";
 
 export function Logo() {
   return (
     <svg viewBox="0 0 40 40" aria-hidden="true">
-      <rect width="40" height="40" rx="11" fill="#0b6b47" />
+      <rect width="40" height="40" rx="11" style={{ fill: "var(--brand)" }} />
       <path d="M5 21h8l3-7 5 15 4-11 2 3h8" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -48,4 +48,33 @@ export class ErrorBoundary extends Component<{ children: ReactNode; resetKey?: s
       </div>
     );
   }
+}
+
+export type Theme = "light" | "dark";
+export function useTheme() {
+  const [theme, setTheme] = useState<Theme>(() => {
+    try {
+      const s = localStorage.getItem("theme");
+      if (s === "light" || s === "dark") return s;
+    } catch { /* ignore */ }
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  });
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem("theme", theme); } catch { /* ignore */ }
+  }, [theme]);
+  return [theme, setTheme] as const;
+}
+
+export function ThemeToggle({ theme, onChange }: { theme: Theme; onChange: (t: Theme) => void }) {
+  const dark = theme === "dark";
+  return (
+    <button type="button" className="theme-btn" aria-label={dark ? "Switch to light theme" : "Switch to dark theme"} title={dark ? "Light mode" : "Dark mode"} onClick={() => onChange(dark ? "light" : "dark")}>
+      {dark ? (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
+      ) : (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
+      )}
+    </button>
+  );
 }

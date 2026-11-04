@@ -1,6 +1,30 @@
 import { useState } from "react";
 import { api, setToken, type User } from "../api";
 
+
+const I = {
+  chat: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.3A8 8 0 1 1 21 12z" /></svg>,
+  list: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" /></svg>,
+  globe: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></svg>,
+  shield: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6z" /><path d="m9 12 2 2 4-4" /></svg>,
+  image: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="3" /><circle cx="9" cy="10" r="1.6" /><path d="m21 16-5-5-9 9" /></svg>,
+  user: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>,
+};
+const FEATURES = [
+  { ic: I.chat, t: "Realistic AI patient", d: "Stays in character and reveals history only when you ask the right question." },
+  { ic: I.list, t: "Structured feedback", d: "See strengths, omissions, missed red flags and clinical reasoning after every case." },
+  { ic: I.image, t: "Visual cases", d: "Read an X-ray or clinical photo and compare your findings with hidden reference notes." },
+  { ic: I.globe, t: "English + Pidgin", d: "Patients describe symptoms in the language they are most comfortable with." },
+  { ic: I.shield, t: "Safety first", d: "A rule-based red-flag check runs before any AI call, so emergencies never wait." },
+  { ic: I.user, t: "Verified doctors", d: "Summaries reach only administrator-verified doctors, and only after they accept." },
+];
+const FAQ = [
+  { q: "Does the AI diagnose patients?", a: "No. Intake output is a preliminary summary meant for clinician review, and the simulation is for education only." },
+  { q: "Who can see my symptom summary?", a: "Only a verified doctor, and only after they accept your consultation request." },
+  { q: "What happens in an emergency?", a: "Red-flag rules run first and return emergency guidance immediately. Online consultation is blocked for those cases." },
+  { q: "Is this a medical device?", a: "No. ClerkifyDx is a prototype and is not clinically validated. In an emergency, go to the nearest hospital." },
+];
+
 const DEMOS = [
   { label: "Try as student", email: "student@clerkifydx.demo" },
   { label: "Try as patient", email: "patient@clerkifydx.demo" },
@@ -21,7 +45,8 @@ export default function Landing({ demo, onAuth, onPatient, onSignup }: { demo: b
       <section className="hero">
         <div className="hero-in">
           <div>
-            <h1>Clerk a patient before you meet one.</h1>
+            <span className="badge"><i />AI clinical-skills practice</span>
+            <h1>Clerk a patient <em>before</em> you meet one.</h1>
             <p className="lead">
               ClerkifyDx lets medical students practise history-taking on an AI patient and shows exactly what they missed.
               Patients describe their symptoms in English or Nigerian Pidgin and hand a clear summary to a verified doctor.
@@ -53,6 +78,33 @@ export default function Landing({ demo, onAuth, onPatient, onSignup }: { demo: b
           <path pathLength="1" d="M0 44H300l12-8 12 8h110l10 8 14-42 14 60 10-26h170l14-10 16 10h520" />
         </svg>
       </section>
+
+      <div className="stats-strip" aria-label="At a glance">
+        <div><b>11</b><span>practice cases</span></div>
+        <div><b>4</b><span>specialties</span></div>
+        <div><b>2</b><span>languages</span></div>
+        <div><b>0</b><span>AI diagnoses given</span></div>
+      </div>
+
+      <section className="sec">
+        <h2>Everything you need to practise and prepare</h2>
+        <p className="sub">Tools for learners and patients, built around safety from the first message.</p>
+        <div className="feat-grid">
+          {FEATURES.map((f) => (
+            <div className="feat" key={f.t}><div className="ic">{f.ic}</div><h3>{f.t}</h3><p>{f.d}</p></div>
+          ))}
+        </div>
+      </section>
+
+      <section className="sec alt"><div className="in">
+        <h2>How a practice session works</h2>
+        <p className="sub">From picking a case to learning what you missed, in a few minutes.</p>
+        <div className="steps">
+          <div><b>Pick a case</b><p>Choose by specialty and difficulty, from simple to complex.</p></div>
+          <div><b>Clerk the patient</b><p>Ask questions in your own words. The AI patient answers only what you ask.</p></div>
+          <div><b>Get feedback</b><p>See what you covered, what you missed, and which red flags slipped by.</p></div>
+        </div>
+      </div></section>
 
       <section className="sec">
         <h2>One platform, two ways in</h2>
@@ -97,6 +149,13 @@ export default function Landing({ demo, onAuth, onPatient, onSignup }: { demo: b
           <div><h3>Patient intake</h3><p>Asks one question at a time in English or Pidgin and writes the clinician summary.</p></div>
         </div>
       </div></section>
+
+      <section className="sec">
+        <h2>Questions, answered</h2>
+        <div className="faq">
+          {FAQ.map((f) => (<details key={f.q}><summary>{f.q}</summary><p>{f.a}</p></details>))}
+        </div>
+      </section>
 
       <section className="cta-band">
         <h2>See it in under three minutes</h2>
