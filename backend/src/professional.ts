@@ -77,3 +77,17 @@ export const consultations = {
     return r.changes > 0;
   },
 };
+
+export const consultMessages = {
+  list(consultationId: string, since = 0) {
+    return db
+      .prepare("SELECT id, sender_id, body, created_at FROM consultation_messages WHERE consultation_id = ? AND created_at > ? ORDER BY created_at, rowid")
+      .all(consultationId, since) as { id: string; sender_id: string; body: string; created_at: number }[];
+  },
+  add(consultationId: string, senderId: string, body: string) {
+    const id = newId();
+    const createdAt = Date.now();
+    db.prepare("INSERT INTO consultation_messages (id,consultation_id,sender_id,body,created_at) VALUES (?,?,?,?,?)").run(id, consultationId, senderId, body, createdAt);
+    return { id, sender_id: senderId, body, created_at: createdAt };
+  },
+};

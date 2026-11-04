@@ -72,12 +72,12 @@ Without `MODEL_API_KEY` (or with `MOCK_LLM=true`) the backend runs in **mock mod
 - The public demo uses shared demo accounts. Do not enter real patient data.
 
 ## Features
-- 9 seed cases across Paediatrics, Obstetrics, Surgery and Internal Medicine, with department and difficulty filters
+- 11 text cases (plus 2 visual cases once images are added) across Paediatrics, Obstetrics, Surgery and Internal Medicine, with department and difficulty filters
 - AI patient simulation, then structured feedback; learning history with recurring omissions (`/api/me/learning`)
 - Patient intake with consent, English + Nigerian Pidgin, structured clinician summary
 - Doctor verification (MDCN number + specialty, admin review)
 - **Visual cases:** the learner studies a chest X-ray or clinical photo, types their reading, and Muse Spark (vision) critiques it. Cases appear once their image file is added (see `backend/assets/cases/README.md`)
-- Consultation requests; the doctor sees the patient summary only after accepting
+- Consultation requests; the doctor sees the patient summary only after accepting. After acceptance, patient and doctor can chat (polling-based, read-only once completed, with a deterministic emergency notice if a patient writes red-flag symptoms)
 - One-click demo logins on the public demo (`ALLOW_DEMO_SEED=true`)
 
 ## API
@@ -102,18 +102,20 @@ Without `MODEL_API_KEY` (or with `MOCK_LLM=true`) the backend runs in **mock mod
 | POST/GET | `/api/consultations` | request / list consultations |
 | POST | `/api/consultations/:id/respond` | doctor accept / decline / complete |
 | POST | `/api/consultations/:id/cancel` | patient cancels |
+| GET/POST | `/api/consultations/:id/messages` | chat for accepted consultations (participants only) |
+| POST | `/api/simulation/:id/image-read` | AI feedback on a learner's image reading (visual cases) |
 
 ## Honest limitations
 - Prototype, not a medical device and not clinically validated. Cases and red-flag rules are not yet reviewed by a clinical panel.
 - AI patient and feedback quality depend on the model and can be wrong; feedback is educational only.
 - Visual cases need reviewed, properly licensed images added by the maintainer; the AI feedback on images is a learning aid and can be wrong.
-- No real-time chat or video yet; "accepted" consultations do not yet have a communication channel.
+- Consultation chat is simple 4-second polling (no WebSockets, push notifications, read receipts or file sharing) and is not an emergency channel. No video.
 - SQLite is fine for a demo, not for multi-instance production.
 - Pidgin support is prompt-based and has not been evaluated with native-speaker clinicians.
 - Doctor verification is a manual admin check of a self-reported MDCN number; there is no registry lookup.
 
 ## Roadmap
-Real-time chat for accepted consultations, Postgres, scheduling, clinically reviewed case library and triage protocols, more visual cases, voice intake with Muse Voice Transcribe, referrals to hospitals.
+WebSocket chat and video, Postgres, scheduling, clinically reviewed case library and triage protocols, more visual cases, voice intake with Muse Voice Transcribe, referrals to hospitals.
 
 ## License
 MIT, see [LICENSE](LICENSE).

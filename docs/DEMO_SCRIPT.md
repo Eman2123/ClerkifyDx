@@ -23,11 +23,11 @@ Record at 1080p. Use the live demo link, logged in with the "Try demo" buttons. 
 
 **2:20 - 2:45 | Doctor consult (Try as patient, then Try as doctor)**
 - Patient generates the summary and requests the verified doctor.
-- Doctor accepts, and only then sees the summary. Show the honest statuses.
+- Doctor accepts, and only then sees the summary. Show the honest statuses, then send one chat message each way (chat opens only after acceptance).
 - "Nothing says a doctor reviewed a case before they actually did."
 
 **2:45 - 3:00 | Impact and what's next**
-"Today this is a prototype: 10 cases, English and Pidgin, 4 roles. Next: real-time chat for accepted consultations, a clinically reviewed case library, voice intake in local languages. The code is open source at github.com/Eman2123/ClerkifyDx. Thank you."
+"Today this is a prototype: 11 text cases, English and Pidgin, 4 roles. Next: real-time chat for accepted consultations, a clinically reviewed case library, voice intake in local languages. The code is open source at github.com/Eman2123/ClerkifyDx. Thank you."
 
 ## Checklist before recording
 - [ ] Live backend is warm (open the URL once; free tiers sleep).

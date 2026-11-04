@@ -103,6 +103,7 @@ export interface Consultation {
   specialty?: string | null;
   patientName?: string;
 }
+export interface ChatMessageView { id: string; mine: boolean; from: "doctor" | "patient"; body: string; createdAt: number }
 export interface DoctorEntry { id: string; name: string; specialty: string; bio: string }
 export interface PendingDoctor { user_id: string; name: string; email: string; mdcn_number: string; specialty: string; bio: string; status: string }
 
@@ -120,6 +121,9 @@ export const api = {
     request<Consultation & { record: PatientRecord | null; recordShared: boolean; notice: string }>(`/consultations/${id}`),
   respondConsult: (id: string, action: "accept" | "decline" | "complete", note?: string) =>
     post<{ status: ConsultStatus }>(`/consultations/${id}/respond`, { action, note }),
+  consultMessages: (id: string) => request<{ status: ConsultStatus; messages: ChatMessageView[] }>(`/consultations/${id}/messages`),
+  sendConsultMessage: (id: string, body: string) =>
+    post<{ messages: ChatMessageView[]; emergencyNotice?: string }>(`/consultations/${id}/messages`, { body }),
   cancelConsult: (id: string) => post<{ status: string }>(`/consultations/${id}/cancel`, {}),
   register: (b: { email: string; password: string; name: string; role: Exclude<Role, "admin"> }) =>
     post<{ user: User; token: string }>("/auth/register", b),

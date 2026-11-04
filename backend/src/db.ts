@@ -66,4 +66,12 @@ CREATE TABLE IF NOT EXISTS consultations (
 );
 CREATE INDEX IF NOT EXISTS idx_cons_patient ON consultations(patient_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_cons_doctor ON consultations(doctor_id, created_at DESC);
+CREATE TABLE IF NOT EXISTS consultation_messages (
+  id TEXT PRIMARY KEY,
+  consultation_id TEXT NOT NULL REFERENCES consultations(id) ON DELETE CASCADE,
+  sender_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  body TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_cmsg ON consultation_messages(consultation_id, created_at);
 `);

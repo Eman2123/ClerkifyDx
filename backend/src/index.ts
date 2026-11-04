@@ -10,7 +10,7 @@ import { patientReply, reviewClerking } from "./simulation.js";
 import { buildRecord, triageReply } from "./triage.js";
 import { AI_DISCLAIMER, EMERGENCY_MESSAGE, detectEmergency } from "./safety.js";
 import { login, loginSchema, optionalAuth, register, registerSchema, requireAuth, seedAdmin } from "./auth.js";
-import { consultations, profiles } from "./professional.js";
+import { consultMessages, consultations, profiles } from "./professional.js";
 import { caseAvailable, imageFilePath, publicImage, readImage } from "./visual.js";
 import { seedDemo } from "./demo.js";
 
@@ -325,6 +325,40 @@ app.post("/api/consultations/:id/cancel", requireAuth("patient"), (req, res) => 
   if (!c || c.patient_id !== req.user!.id) return res.status(404).json({ error: "Not found" });
   if (!consultations.transition(c.id, ["requested", "accepted"], "cancelled")) return res.status(409).json({ error: `Cannot cancel a ${c.status} consultation` });
   res.json({ status: "cancelled" });
+});
+
+// Chat for an accepted consultation (polling-based). Participants only; opens only after the doctor accepts.
+const chatParty = requireAuth("patient", "doctor");
+const loadChat = (req: Request, res: Response) => {
+  const c = consultations.get(req.params.id);
+  if (!c || (c.patient_id !== req.user!.id && c.doctor_id !== req.user!.id)) {
+    res.status(404).json({ error: "Not found" });
+    return null;
+  }
+  if (c.status !== "accepted" && c.status !== "completed") {
+    res.status(409).json({ error: "Chat opens only after the doctor accepts the request." });
+    return null;
+  }
+  return c;
+};
+const chatView = (c: NonNullable<ReturnType<typeof consultations.get>>, userId: string) =>
+  consultMessages.list(c.id).map((m) => ({ id: m.id, mine: m.sender_id === userId, from: m.sender_id === c.doctor_id ? "doctor" : "patient", body: m.body, createdAt: m.created_at }));
+
+app.get("/api/consultations/:id/messages", chatParty, (req, res) => {
+  const c = loadChat(req, res);
+  if (!c) return;
+  res.json({ status: c.status, messages: chatView(c, req.user!.id) });
+});
+
+app.post("/api/consultations/:id/messages", chatParty, rateLimit({ windowMs: 60_000, limit: 40 }), (req, res) => {
+  const { body } = z.object({ body: z.string().trim().min(1).max(1000) }).parse(req.body);
+  const c = loadChat(req, res);
+  if (!c) return;
+  if (c.status !== "accepted") return res.status(409).json({ error: "This consultation is completed; the chat is read-only." });
+  consultMessages.add(c.id, req.user!.id, body);
+  // Chat is not an emergency channel: patients writing red-flag symptoms get the same deterministic guidance.
+  const emergencyNotice = req.user!.role === "patient" && detectEmergency(body) ? EMERGENCY_MESSAGE.en : undefined;
+  res.status(201).json({ messages: chatView(c, req.user!.id), emergencyNotice });
 });
 
 // ---------- Errors ----------

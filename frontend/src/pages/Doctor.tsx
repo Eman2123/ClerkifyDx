@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { api, type Consultation, type PatientRecord, type User } from "../api";
+import { ConsultChat } from "./Consult";
 
 export default function Doctor({ user }: { user: User }) {
   const [profile, setProfile] = useState<{ status: string } | null | undefined>(undefined);
   const [form, setForm] = useState({ mdcnNumber: "", specialty: "", bio: "" });
   const [list, setList] = useState<Consultation[]>([]);
   const [open, setOpen] = useState<{ id: string; record: PatientRecord | null; shared: boolean } | null>(null);
+  const [chatId, setChatId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
 
@@ -65,7 +67,11 @@ export default function Doctor({ user }: { user: User }) {
               {(c.status === "accepted" || c.status === "completed") && (
                 <button className="secondary" onClick={() => view(c.id)}>View summary</button>
               )}
+              {(c.status === "accepted" || c.status === "completed") && (
+                <button className="secondary" onClick={() => setChatId(chatId === c.id ? null : c.id)}>{chatId === c.id ? "Hide chat" : "Open chat"}</button>
+              )}
             </div>
+            {chatId === c.id && <ConsultChat id={c.id} status={c.status} />}
           </li>
         ))}
       </ul>

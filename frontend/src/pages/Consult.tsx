@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { api, type Consultation, type DoctorEntry } from "../api";
+import { useEffect, useRef, useState } from "react";
+import { api, type ChatMessageView, type Consultation, type DoctorEntry } from "../api";
 
 /** Find a verified doctor and request a consultation using a finished intake summary. */
 export function FindDoctor({ triageSessionId }: { triageSessionId: string }) {
@@ -43,6 +43,7 @@ export function FindDoctor({ triageSessionId }: { triageSessionId: string }) {
 export function MyConsultations() {
   const [list, setList] = useState<Consultation[]>([]);
   const [error, setError] = useState("");
+  const [chatId, setChatId] = useState<string | null>(null);
   const load = () => api.consultations().then((r) => setList(r.consultations)).catch((e: Error) => setError(e.message));
   useEffect(() => { load(); }, []);
 
@@ -57,6 +58,12 @@ export function MyConsultations() {
             <b>{c.doctorName}</b> {c.specialty && <span className="muted">· {c.specialty}</span>} <span className={`tag ${c.status}`}>{c.status}</span>
             {c.status === "requested" && <p className="muted">Waiting for the doctor. No doctor has reviewed your case yet.</p>}
             {c.doctorNote && <p><b>Doctor's note:</b> {c.doctorNote}</p>}
+            {(c.status === "accepted" || c.status === "completed") && (
+              <>
+                <button className="secondary" onClick={() => setChatId(chatId === c.id ? null : c.id)}>{chatId === c.id ? "Hide chat" : "Open chat"}</button>
+                {chatId === c.id && <ConsultChat id={c.id} status={c.status} />}
+              </>
+            )}
             {(c.status === "requested" || c.status === "accepted") && (
               <button className="secondary" onClick={() => api.cancelConsult(c.id).then(load)}>Cancel</button>
             )}
@@ -64,5 +71,53 @@ export function MyConsultations() {
         ))}
       </ul>
     </section>
+  );
+}
+
+/** Simple polling chat for an accepted consultation. Read-only once completed. Not an emergency channel. */
+export function ConsultChat({ id, status }: { id: string; status: string }) {
+  const [msgs, setMsgs] = useState<ChatMessageView[]>([]);
+  const [text, setText] = useState("");
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const endRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let alive = true;
+    const load = () => api.consultMessages(id).then((r) => alive && setMsgs(r.messages)).catch((e: Error) => alive && setError(e.message));
+    load();
+    const t = status === "accepted" ? setInterval(load, 4000) : undefined;
+    return () => { alive = false; if (t) clearInterval(t); };
+  }, [id, status]);
+  useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [msgs.length]);
+
+  async function send() {
+    const body = text.trim();
+    if (!body) return;
+    setText(""); setError("");
+    try {
+      const r = await api.sendConsultMessage(id, body);
+      setMsgs(r.messages);
+      setNotice(r.emergencyNotice ?? "");
+    } catch (e) { setError((e as Error).message); setText(body); }
+  }
+
+  return (
+    <div className="feedback">
+      <p className="muted">Chat is for non-urgent follow-up only. In an emergency, go to the nearest hospital.</p>
+      <div className="chat">
+        {msgs.length === 0 && <p className="muted">No messages yet.</p>}
+        {msgs.map((m) => <div key={m.id} className={`bubble ${m.mine ? "you" : "patient"}`}>{m.body}</div>)}
+        <div ref={endRef} />
+      </div>
+      {notice && <p className="error"><b>{notice}</b></p>}
+      {status === "accepted" ? (
+        <div className="row">
+          <input value={text} maxLength={1000} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Write a message" />
+          <button onClick={send} disabled={!text.trim()}>Send</button>
+        </div>
+      ) : <p className="muted">This consultation is completed. The chat is read-only.</p>}
+      {error && <p className="error">{error}</p>}
+    </div>
   );
 }
