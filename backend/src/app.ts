@@ -209,7 +209,8 @@ app.post("/api/triage/:id/message", optionalAuth, aiLimit, ah(async (req, res) =
     const reply = await triageReply(session, message);
     await triages.save(session);
     res.json({ emergency: session.emergency, message: reply });
-  } catch {
+  } catch (err) {
+    console.error("LLM call failed:", err instanceof Error ? err.message : err);
     res.status(503).json({
       error: "AI is temporarily unavailable. If this is urgent, go to the nearest hospital.",
       emergencyGuidance: EMERGENCY_MESSAGE[session.language],
