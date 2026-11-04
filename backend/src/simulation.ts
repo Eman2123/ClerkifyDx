@@ -1,10 +1,11 @@
 import { chat, parseJson } from "./llm.js";
+import { PIDGIN_STYLE } from "./lang.js";
 import type { ClinicalCase, Language } from "./cases.js";
 import type { SimSession } from "./store.js";
 
 const langInstruction = (lang: Language) =>
   lang === "pcm"
-    ? "Reply in simple Nigerian Pidgin English."
+    ? PIDGIN_STYLE
     : "Reply in simple, natural English.";
 
 export async function patientReply(c: ClinicalCase, session: SimSession, question: string): Promise<string> {

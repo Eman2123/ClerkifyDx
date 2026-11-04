@@ -43279,8 +43279,11 @@ function mockReply(messages, opts) {
   return "[MOCK] Meta Model API is not configured. Set MODEL_API_KEY in backend/.env to enable live AI responses.";
 }
 
+// src/lang.ts
+var PIDGIN_STYLE = `Write in natural, simple Nigerian Pidgin (Naija Pidgin), the way a friendly Nigerian would speak, not English with a few Pidgin words. Useful words: "dey" (is/are/-ing), "no" (not), "wetin" (what), "abeg" (please), "wey" (that/who), "don" (has/have already), "for" (at/in), "go" (will), "make" (let/should), "pikin" (child), "belle" (stomach), "body dey hot" (fever), "e dey pain me" (it hurts). Keep sentences short. Keep medical terms such as malaria, blood pressure and typhoid in English. Example: "How long you don dey feel am?" / "Since when the body don dey hot?". If the output must be JSON, keep every JSON key in English and write only the text values in Pidgin.`;
+
 // src/simulation.ts
-var langInstruction = (lang2) => lang2 === "pcm" ? "Reply in simple Nigerian Pidgin English." : "Reply in simple, natural English.";
+var langInstruction = (lang2) => lang2 === "pcm" ? PIDGIN_STYLE : "Reply in simple, natural English.";
 async function patientReply(c, session, question) {
   const system = `You are a simulated patient in a medical education tool. ${c.patientProfile}
 ${langInstruction(session.language)}
@@ -43349,7 +43352,7 @@ Reasoning: ${sub.reasoning ?? "not provided"}`;
 }
 
 // src/triage.ts
-var langInstruction2 = (lang2) => lang2 === "pcm" ? "Talk in simple Nigerian Pidgin English." : "Use simple, plain English.";
+var langInstruction2 = (lang2) => lang2 === "pcm" ? PIDGIN_STYLE : "Use simple, plain English.";
 var TRIAGE_SYSTEM = (lang2) => `You are ClerkifyDx's patient intake assistant. You are an AI, NOT a doctor.
 ${langInstruction2(lang2)}
 
@@ -43408,7 +43411,8 @@ var EMERGENCY_PATTERNS = [
   /i no fit breathe|breath dey hard me|no dey breathe well/i,
   /blood dey comot plenty|plenty blood/i,
   /e don faint|dem faint|no dey wake|body dey shake/i,
-  /chest dey pain me/i
+  /chest dey pain me|e dey pain me for chest/i,
+  /pikin (no dey wake|dey shake|don faint)|dey (convulse|faint)|dey vomit blood|blood dey comot|i wan (die|kill myself)/i
 ];
 function detectEmergency(text) {
   return EMERGENCY_PATTERNS.some((p) => p.test(text));

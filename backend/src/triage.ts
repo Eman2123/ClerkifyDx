@@ -1,9 +1,10 @@
 import { chat, parseJson } from "./llm.js";
+import { PIDGIN_STYLE } from "./lang.js";
 import type { Language } from "./cases.js";
 import type { TriageSession } from "./store.js";
 
 const langInstruction = (lang: Language) =>
-  lang === "pcm" ? "Talk in simple Nigerian Pidgin English." : "Use simple, plain English.";
+  lang === "pcm" ? PIDGIN_STYLE : "Use simple, plain English.";
 
 export const TRIAGE_SYSTEM = (lang: Language) => `You are ClerkifyDx's patient intake assistant. You are an AI, NOT a doctor.
 ${langInstruction(lang)}

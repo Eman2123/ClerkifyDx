@@ -7,6 +7,7 @@ import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import Doctor from "./pages/Doctor";
 import { MyConsultations } from "./pages/Consult";
+import { tr } from "./i18n";
 import Landing from "./pages/Landing";
 import { Logo, initials } from "./ui";
 
@@ -58,9 +59,9 @@ export default function App() {
         <button className="logo" onClick={home} aria-label="ClerkifyDx home"><Logo />Clerkify<b>Dx</b></button>
         <nav aria-label="Main">
           {!user && nav("landing", "Home")}
-          {isLearner && <>{nav("student", "Simulation")}{nav("history", "My learning")}</>}
-          {(!user || user.role === "patient" || isLearner) && nav("patient", "Patient intake")}
-          {user?.role === "patient" && nav("consults", "My consultations")}
+          {isLearner && <>{nav("student", tr(language, "nav_sim"))}{nav("history", tr(language, "nav_learn"))}</>}
+          {(!user || user.role === "patient" || isLearner) && nav("patient", tr(language, "nav_intake"))}
+          {user?.role === "patient" && nav("consults", tr(language, "nav_consults"))}
           {user?.role === "doctor" && nav("doctor", "Doctor dashboard")}
           {user?.role === "admin" && nav("admin", "Verify doctors")}
         </nav>
@@ -96,7 +97,7 @@ export default function App() {
         {tab === "admin" && user?.role === "admin" && <Admin />}
       </main>
       <footer className="footer">
-        Educational and information-gathering tool only. Not medical advice or a diagnosis. In an emergency go to the nearest hospital.
+        {tr(language, "footer")}
       </footer>
     </div>
   );

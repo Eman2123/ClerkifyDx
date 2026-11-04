@@ -16,7 +16,8 @@ const EMERGENCY_PATTERNS: RegExp[] = [
   /i no fit breathe|breath dey hard me|no dey breathe well/i,
   /blood dey comot plenty|plenty blood/i,
   /e don faint|dem faint|no dey wake|body dey shake/i,
-  /chest dey pain me/i,
+  /chest dey pain me|e dey pain me for chest/i,
+  /pikin (no dey wake|dey shake|don faint)|dey (convulse|faint)|dey vomit blood|blood dey comot|i wan (die|kill myself)/i,
 ];
 
 export function detectEmergency(text: string): boolean {

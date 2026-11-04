@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { tr } from "../i18n";
 import { api, apiUrl, type CaseSummary, type Feedback, type ImageReading, type Language } from "../api";
 
 interface Msg {
@@ -105,7 +106,7 @@ export default function Student({ language }: { language: Language }) {
   if (!session) {
     return (
       <section>
-        <div className="page-head"><h2>Choose a case</h2><p className="muted">Pick a department and level. The AI patient only answers what you ask, so ask well.</p></div>
+        <div className="page-head"><h2>{tr(language, "choose_case")}</h2><p className="muted">{tr(language, "choose_sub")}</p></div>
         {error && <p className="error">{error}</p>}
         {loadingCases && <p className="muted">Loading cases...</p>}
         <div className="row filters">
@@ -180,35 +181,35 @@ export default function Student({ language }: { language: Language }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send()}
-            placeholder="Ask the patient a question"
+            placeholder={tr(language, "ask_ph")}
           />
-          <button onClick={send} disabled={busy}>Send</button>
+          <button onClick={send} disabled={busy}>{tr(language, "send")}</button>
         </div>
       </div>
 
       <div className="panel">
-        <h2>Your clerking</h2>
-        <label>History summary
+        <h2>{tr(language, "clerking")}</h2>
+        <label>{tr(language, "hist_sum")}
           <textarea rows={5} value={form.historySummary} onChange={(e) => setForm({ ...form, historySummary: e.target.value })} />
         </label>
-        <label>Leading diagnosis
+        <label>{tr(language, "lead_dx")}
           <input value={form.diagnosis} onChange={(e) => setForm({ ...form, diagnosis: e.target.value })} />
         </label>
-        <label>Differentials (comma separated)
+        <label>{tr(language, "diffs")}
           <input value={form.differentials} onChange={(e) => setForm({ ...form, differentials: e.target.value })} />
         </label>
-        <label>Reasoning (optional)
+        <label>{tr(language, "reasoning")}
           <textarea rows={3} value={form.reasoning} onChange={(e) => setForm({ ...form, reasoning: e.target.value })} />
         </label>
         <div className="row">
-          <button onClick={submit} disabled={busy || !form.historySummary || !form.diagnosis}>Submit for feedback</button>
-          <button className="secondary" onClick={() => setSession(null)}>New case</button>
+          <button onClick={submit} disabled={busy || !form.historySummary || !form.diagnosis}>{tr(language, "submit_fb")}</button>
+          <button className="secondary" onClick={() => setSession(null)}>{tr(language, "new_case")}</button>
         </div>
         {error && <p className="error">{error}</p>}
 
         {result && (
           <div className="feedback">
-            <h3>Feedback</h3>
+            <h3>{tr(language, "feedback")}</h3>
             <p>{result.feedback.overallSummary}</p>
             <p><b>Diagnosis:</b> {result.feedback.diagnosisAssessment.replace("_", " ")} (reference: {result.reveal.diagnosis})</p>
             <List title="Strengths" items={result.feedback.strengths} />

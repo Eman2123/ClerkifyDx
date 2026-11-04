@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type Language, type PatientRecord, type User } from "../api";
 import { FindDoctor } from "./Consult";
+import { tr } from "../i18n";
 import { Check } from "../ui";
 
 interface Msg {
@@ -65,18 +66,18 @@ export default function Patient({ language, user }: { language: Language; user: 
   if (!sessionId) {
     return (
       <section className="panel narrow">
-        <h2>Tell us what is wrong</h2>
-        <p>An AI assistant asks about your symptoms one question at a time and organises your answers for a qualified doctor.</p>
+        <h2>{tr(language, "intake_title")}</h2>
+        <p>{tr(language, "intake_intro")}</p>
         <ul className="assure">
-          <li><Check /><span>It cannot diagnose you and cannot call an ambulance.</span></li>
-          <li><Check /><span>Emergency warning signs are checked first, before any AI reply.</span></li>
-          <li><Check /><span>A doctor sees your summary only if you choose to share it and they accept.</span></li>
+          <li><Check /><span>{tr(language, "assure1")}</span></li>
+          <li><Check /><span>{tr(language, "assure2")}</span></li>
+          <li><Check /><span>{tr(language, "assure3")}</span></li>
         </ul>
         <label className="check">
           <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-          I understand and consent to my information being processed for this purpose.
+          {tr(language, "consent")}
         </label>
-        <button className="big" onClick={start} disabled={!consent}>Start intake</button>
+        <button className="big" onClick={start} disabled={!consent}>{tr(language, "start")}</button>
         {error && <p className="error">{error}</p>}
       </section>
     );
@@ -99,23 +100,23 @@ export default function Patient({ language, user }: { language: Language; user: 
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send()}
-          placeholder="Type here"
+          placeholder={tr(language, "placeholder")}
         />
-        <button onClick={send} disabled={busy}>Send</button>
-        <button className="secondary" onClick={finish} disabled={busy || msgs.length < 3}>Finish</button>
+        <button onClick={send} disabled={busy}>{tr(language, "send")}</button>
+        <button className="secondary" onClick={finish} disabled={busy || msgs.length < 3}>{tr(language, "finish")}</button>
       </div>
       {error && <p className="error">{error}</p>}
       {record && (
         <div className="feedback">
-          <h3>Summary for clinician</h3>
-          <p><b>Complaint:</b> {record.record.presentingComplaint}</p>
-          <p><b>History:</b> {record.record.historyOfComplaint}</p>
-          <p><b>Associated symptoms:</b> {record.record.associatedSymptoms.join(", ") || "none reported"}</p>
-          <p><b>Past history:</b> {record.record.pastMedicalHistory}</p>
-          <p><b>Medications:</b> {record.record.medications}</p>
-          <p><b>Allergies:</b> {record.record.allergies}</p>
-          <p><b>Unknown:</b> {record.record.unknown.join(", ") || "-"}</p>
-          <p><b>Preliminary urgency:</b> {record.record.suggestedUrgency.replace(/_/g, " ")}</p>
+          <h3>{tr(language, "summary")}</h3>
+          <p><b>{tr(language, "complaint")}:</b> {record.record.presentingComplaint}</p>
+          <p><b>{tr(language, "history")}:</b> {record.record.historyOfComplaint}</p>
+          <p><b>{tr(language, "associated")}:</b> {record.record.associatedSymptoms.join(", ") || tr(language, "none")}</p>
+          <p><b>{tr(language, "pmh")}:</b> {record.record.pastMedicalHistory}</p>
+          <p><b>{tr(language, "meds")}:</b> {record.record.medications}</p>
+          <p><b>{tr(language, "allergies")}:</b> {record.record.allergies}</p>
+          <p><b>{tr(language, "unknown")}:</b> {record.record.unknown.join(", ") || "-"}</p>
+          <p><b>{tr(language, "urgency")}:</b> {record.record.suggestedUrgency.replace(/_/g, " ")}</p>
           <p className="muted">{record.notice}</p>
           {user?.role === "patient" && record.record.suggestedUrgency !== "emergency_now" && sessionId && (
             <FindDoctor triageSessionId={sessionId} />
