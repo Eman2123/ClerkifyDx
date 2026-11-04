@@ -105,7 +105,7 @@ export default function Student({ language }: { language: Language }) {
   if (!session) {
     return (
       <section>
-        <h2>Choose a case</h2>
+        <div className="page-head"><h2>Choose a case</h2><p className="muted">Pick a department and level. The AI patient only answers what you ask, so ask well.</p></div>
         {error && <p className="error">{error}</p>}
         {loadingCases && <p className="muted">Loading cases...</p>}
         <div className="row filters">
@@ -123,11 +123,14 @@ export default function Student({ language }: { language: Language }) {
         {!loadingCases && visible.length === 0 && !error && <p className="muted">No cases match these filters.</p>}
         <div className="grid">
           {visible.map((c) => (
-            <button key={c.id} className="card" onClick={() => start(c)}>
-              <span className={`tag ${c.difficulty}`}>{c.difficulty}{c.image ? " · image" : ""}</span>
+            <button key={c.id} className={`card ${c.difficulty}`} onClick={() => start(c)}>
+              <span className="dept">{c.department}{c.image ? " · includes image" : ""}</span>
               <strong>{c.title}</strong>
-              <small>{c.department}</small>
-              <small className="muted">{c.presentation}</small>
+              <span className="pres">{c.presentation}</span>
+              <span className="dots" aria-label={`Difficulty: ${c.difficulty}`}>
+                {["simple", "intermediate", "complex"].map((l, i) => <i key={l} className={i <= ["simple", "intermediate", "complex"].indexOf(c.difficulty) ? "on" : ""} />)}
+                &nbsp;{c.difficulty}
+              </span>
             </button>
           ))}
         </div>

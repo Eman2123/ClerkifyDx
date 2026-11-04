@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type Language, type PatientRecord, type User } from "../api";
 import { FindDoctor } from "./Consult";
+import { Check } from "../ui";
 
 interface Msg {
   from: "you" | "ai";
@@ -64,16 +65,18 @@ export default function Patient({ language, user }: { language: Language; user: 
   if (!sessionId) {
     return (
       <section className="panel narrow">
-        <h2>Patient intake</h2>
-        <p>
-          This AI assistant asks about your symptoms and organises them for a qualified doctor. It cannot diagnose you
-          and cannot call an ambulance. Connection to doctors is still under development.
-        </p>
+        <h2>Tell us what is wrong</h2>
+        <p>An AI assistant asks about your symptoms one question at a time and organises your answers for a qualified doctor.</p>
+        <ul className="assure">
+          <li><Check /><span>It cannot diagnose you and cannot call an ambulance.</span></li>
+          <li><Check /><span>Emergency warning signs are checked first, before any AI reply.</span></li>
+          <li><Check /><span>A doctor sees your summary only if you choose to share it and they accept.</span></li>
+        </ul>
         <label className="check">
           <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
           I understand and consent to my information being processed for this purpose.
         </label>
-        <button onClick={start} disabled={!consent}>Start</button>
+        <button className="big" onClick={start} disabled={!consent}>Start intake</button>
         {error && <p className="error">{error}</p>}
       </section>
     );

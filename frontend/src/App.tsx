@@ -7,16 +7,19 @@ import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import Doctor from "./pages/Doctor";
 import { MyConsultations } from "./pages/Consult";
+import Landing from "./pages/Landing";
+import { Logo, initials } from "./ui";
 
-type Tab = "student" | "history" | "patient" | "consults" | "doctor" | "admin" | "auth";
+type Tab = "landing" | "student" | "history" | "patient" | "consults" | "doctor" | "admin" | "auth";
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
-  const [tab, setTab] = useState<Tab>("auth");
+  const [tab, setTab] = useState<Tab>("landing");
   const [language, setLanguage] = useState<Language>("en");
   const [mock, setMock] = useState<boolean | null>(null);
   const [demo, setDemo] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
 
   const isLearner = user?.role === "student" || user?.role === "intern";
 
@@ -38,53 +41,53 @@ export default function App() {
   function logout() {
     setToken(null);
     setUser(null);
-    setTab("auth");
+    setTab("landing");
   }
 
   if (!ready) return null;
 
+  const goAuth = (m: "login" | "register") => { setAuthMode(m); setTab("auth"); };
+  const home = () => setTab(!user ? "landing" : isLearner ? "student" : user.role === "doctor" ? "doctor" : user.role === "admin" ? "admin" : "patient");
+  const nav = (t: Tab, label: string) => (
+    <button className={tab === t ? "active" : ""} aria-current={tab === t ? "page" : undefined} onClick={() => setTab(t)}>{label}</button>
+  );
+
   return (
     <div className="app">
       <header className="header">
-        <h1>ClerkifyDx</h1>
-        <nav>
-          {isLearner && (
-            <>
-              <button className={tab === "student" ? "active" : ""} onClick={() => setTab("student")}>Simulation</button>
-              <button className={tab === "history" ? "active" : ""} onClick={() => setTab("history")}>My learning</button>
-            </>
-          )}
-          {(!user || user.role === "patient" || isLearner) && (
-            <button className={tab === "patient" ? "active" : ""} onClick={() => setTab("patient")}>Patient intake</button>
-          )}
-          {user?.role === "patient" && (
-            <button className={tab === "consults" ? "active" : ""} onClick={() => setTab("consults")}>My consultations</button>
-          )}
-          {user?.role === "doctor" && (
-            <button className={tab === "doctor" ? "active" : ""} onClick={() => setTab("doctor")}>Doctor dashboard</button>
-          )}
-          {user?.role === "admin" && (
-            <button className={tab === "admin" ? "active" : ""} onClick={() => setTab("admin")}>Verify doctors</button>
-          )}
+        <button className="logo" onClick={home} aria-label="ClerkifyDx home"><Logo />Clerkify<b>Dx</b></button>
+        <nav aria-label="Main">
+          {!user && nav("landing", "Home")}
+          {isLearner && <>{nav("student", "Simulation")}{nav("history", "My learning")}</>}
+          {(!user || user.role === "patient" || isLearner) && nav("patient", "Patient intake")}
+          {user?.role === "patient" && nav("consults", "My consultations")}
+          {user?.role === "doctor" && nav("doctor", "Doctor dashboard")}
+          {user?.role === "admin" && nav("admin", "Verify doctors")}
         </nav>
-        <select value={language} onChange={(e) => setLanguage(e.target.value as Language)} aria-label="Language">
-          <option value="en">English</option>
-          <option value="pcm">Nigerian Pidgin</option>
-        </select>
+        <div className="lang" role="group" aria-label="Language">
+          <button aria-pressed={language === "en"} onClick={() => setLanguage("en")}>English</button>
+          <button aria-pressed={language === "pcm"} onClick={() => setLanguage("pcm")}>Pidgin</button>
+        </div>
         {user ? (
-          <span className="user">
-            {user.name} <small>({user.role})</small> <button className="secondary" onClick={logout}>Log out</button>
-          </span>
+          <div className="user">
+            <span className="avatar" aria-hidden="true">{initials(user.name)}</span>
+            <span>{user.name}<small>{user.role}</small></span>
+            <button className="secondary" onClick={logout}>Log out</button>
+          </div>
         ) : (
-          <button className="secondary" onClick={() => setTab("auth")}>Log in</button>
+          <div className="row">
+            <button className="secondary" onClick={() => goAuth("login")}>Log in</button>
+            <button onClick={() => goAuth("register")}>Sign up</button>
+          </div>
         )}
       </header>
       {mock && <div className="banner">Demo mode: Meta Model API key not set, AI replies are placeholders.</div>}
       {user?.role === "doctor" && !user.verified && (
         <div className="banner">Your doctor account is pending verification. Professional features are not enabled yet.</div>
       )}
-      <main>
-        {tab === "auth" && <Auth onAuth={enter} onSkip={() => setTab("patient")} demo={demo} />}
+      <main className={tab === "landing" ? "wide" : ""}>
+        {tab === "landing" && <Landing demo={demo} onAuth={enter} onPatient={() => setTab("patient")} onSignup={() => goAuth("register")} />}
+        {tab === "auth" && <Auth onAuth={enter} onSkip={() => setTab("patient")} demo={demo} initialMode={authMode} key={authMode} />}
         {tab === "student" && isLearner && <Student language={language} />}
         {tab === "history" && isLearner && <History />}
         {tab === "patient" && <Patient language={language} user={user} />}
