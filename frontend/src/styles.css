@@ -43,3 +43,5 @@ ul.plain li { padding:8px 0; border-bottom:1px solid var(--line); }
 .tag.requested { background:#fff0cc; color:#7a5300; }
 .tag.accepted, .tag.completed { background:#dff5ee; color:#075e50; }
 .tag.declined, .tag.cancelled { background:#fde0e0; color:#8a1f1f; }
+.filters { margin-bottom:12px; }
+.filters select { width:auto; }

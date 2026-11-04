@@ -9,7 +9,7 @@ AI-powered digital health platform: clinical case simulation for medical student
 - **Frontend:** React, Vite, TypeScript
 
 ## Features
-- **Student simulation:** pick a case, interview an AI patient (stays in character, reveals history only when asked), submit clerking, get structured Llama feedback (strengths, omissions, red flags, reasoning).
+- **Student simulation:** pick a case from 9 seed cases (filter by department/difficulty), interview an AI patient (stays in character, reveals history only when asked), submit clerking, get structured Llama feedback (strengths, omissions, red flags, reasoning).
 - **Patient intake:** consent first, one-question-at-a-time AI intake, structured record for a clinician. A deterministic red-flag check runs *before* the LLM, so emergency guidance never depends on AI availability.
 - **Languages:** English and Nigerian Pidgin.
 - **Accounts & roles:** JWT auth (bcrypt), roles student/intern/patient/doctor/admin, role-based access, rate limiting, helmet. Doctors start unverified (pending credential check). Patient intake works without an account so emergency guidance is never blocked.
@@ -25,6 +25,12 @@ cp backend/.env.example backend/.env   # add LLAMA_API_KEY and a long random JWT
 npm run dev:backend    # http://localhost:4000
 npm run dev:frontend   # http://localhost:5173
 ```
+### Demo accounts
+```bash
+npm run seed   # creates student, intern, patient and a verified doctor (password: Demo12345)
+```
+Logins: `student@clerkifydx.demo`, `intern@clerkifydx.demo`, `patient@clerkifydx.demo`, `doctor@clerkifydx.demo`. For local demos only; the script refuses to run in production. Set `ADMIN_EMAIL` / `ADMIN_PASSWORD` first to also get an admin.
+
 Without `LLAMA_API_KEY` the backend runs in mock mode so the UI can be demoed.
 
 ### Llama configuration

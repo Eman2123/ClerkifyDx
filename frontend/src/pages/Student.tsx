@@ -8,6 +8,9 @@ interface Msg {
 
 export default function Student({ language }: { language: Language }) {
   const [cases, setCases] = useState<CaseSummary[]>([]);
+  const [loadingCases, setLoadingCases] = useState(true);
+  const [dept, setDept] = useState("all");
+  const [level, setLevel] = useState("all");
   const [error, setError] = useState("");
   const [session, setSession] = useState<{ id: string; c: CaseSummary } | null>(null);
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -22,7 +25,11 @@ export default function Student({ language }: { language: Language }) {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    api.cases().then((d) => setCases(d.cases)).catch((e: Error) => setError(e.message));
+    api
+      .cases()
+      .then((d) => setCases(d.cases))
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setLoadingCases(false));
   }, []);
   useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [msgs]);
 
@@ -75,17 +82,34 @@ export default function Student({ language }: { language: Language }) {
     }
   }
 
+  const visible = cases.filter((c) => (dept === "all" || c.department === dept) && (level === "all" || c.difficulty === level));
+
   if (!session) {
     return (
       <section>
         <h2>Choose a case</h2>
         {error && <p className="error">{error}</p>}
+        {loadingCases && <p className="muted">Loading cases...</p>}
+        <div className="row filters">
+          <select value={dept} onChange={(e) => setDept(e.target.value)} aria-label="Department">
+            <option value="all">All departments</option>
+            {[...new Set(cases.map((c) => c.department))].map((d) => <option key={d}>{d}</option>)}
+          </select>
+          <select value={level} onChange={(e) => setLevel(e.target.value)} aria-label="Difficulty">
+            <option value="all">All levels</option>
+            <option value="simple">Simple</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="complex">Complex</option>
+          </select>
+        </div>
+        {!loadingCases && visible.length === 0 && !error && <p className="muted">No cases match these filters.</p>}
         <div className="grid">
-          {cases.map((c) => (
+          {visible.map((c) => (
             <button key={c.id} className="card" onClick={() => start(c)}>
               <span className={`tag ${c.difficulty}`}>{c.difficulty}</span>
               <strong>{c.title}</strong>
               <small>{c.department}</small>
+              <small className="muted">{c.presentation}</small>
             </button>
           ))}
         </div>
