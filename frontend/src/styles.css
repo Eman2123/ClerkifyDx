@@ -36,3 +36,7 @@ label.check input { width:auto; margin-top:3px; }
 .muted { color:var(--muted); font-size:13px; }
 .error { color:#b3261e; }
 .feedback { margin-top:16px; padding-top:8px; border-top:1px solid var(--line); font-size:14px; }
+
+.user { display:flex; gap:8px; align-items:center; font-size:14px; }
+ul.plain { list-style:none; padding:0; }
+ul.plain li { padding:8px 0; border-bottom:1px solid var(--line); }

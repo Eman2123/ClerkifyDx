@@ -1,38 +1,79 @@
 import { useEffect, useState } from "react";
-import { api, type Language } from "./api";
+import { api, getToken, setToken, type Language, type User } from "./api";
 import Student from "./pages/Student";
 import Patient from "./pages/Patient";
+import History from "./pages/History";
+import Auth from "./pages/Auth";
 
-type Tab = "student" | "patient";
+type Tab = "student" | "history" | "patient" | "auth";
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>("student");
+  const [user, setUser] = useState<User | null>(null);
+  const [ready, setReady] = useState(false);
+  const [tab, setTab] = useState<Tab>("auth");
   const [language, setLanguage] = useState<Language>("en");
   const [mock, setMock] = useState<boolean | null>(null);
 
+  const isLearner = user?.role === "student" || user?.role === "intern";
+
+  function enter(u: User) {
+    setUser(u);
+    setTab(u.role === "student" || u.role === "intern" ? "student" : "patient");
+  }
+
   useEffect(() => {
     api.health().then((h) => setMock(h.mockLlm)).catch(() => setMock(null));
+    if (!getToken()) return setReady(true);
+    api
+      .me()
+      .then((r) => enter(r.user))
+      .catch(() => setToken(null))
+      .finally(() => setReady(true));
   }, []);
+
+  function logout() {
+    setToken(null);
+    setUser(null);
+    setTab("auth");
+  }
+
+  if (!ready) return null;
 
   return (
     <div className="app">
       <header className="header">
         <h1>ClerkifyDx</h1>
         <nav>
-          <button className={tab === "student" ? "active" : ""} onClick={() => setTab("student")}>
-            Student simulation
-          </button>
-          <button className={tab === "patient" ? "active" : ""} onClick={() => setTab("patient")}>
-            Patient intake
-          </button>
+          {isLearner && (
+            <>
+              <button className={tab === "student" ? "active" : ""} onClick={() => setTab("student")}>Simulation</button>
+              <button className={tab === "history" ? "active" : ""} onClick={() => setTab("history")}>My learning</button>
+            </>
+          )}
+          <button className={tab === "patient" ? "active" : ""} onClick={() => setTab("patient")}>Patient intake</button>
         </nav>
         <select value={language} onChange={(e) => setLanguage(e.target.value as Language)} aria-label="Language">
           <option value="en">English</option>
           <option value="pcm">Nigerian Pidgin</option>
         </select>
+        {user ? (
+          <span className="user">
+            {user.name} <small>({user.role})</small> <button className="secondary" onClick={logout}>Log out</button>
+          </span>
+        ) : (
+          <button className="secondary" onClick={() => setTab("auth")}>Log in</button>
+        )}
       </header>
       {mock && <div className="banner">Demo mode: Llama key not set, AI replies are placeholders.</div>}
-      <main>{tab === "student" ? <Student language={language} /> : <Patient language={language} />}</main>
+      {user?.role === "doctor" && !user.verified && (
+        <div className="banner">Your doctor account is pending verification. Professional features are not enabled yet.</div>
+      )}
+      <main>
+        {tab === "auth" && <Auth onAuth={enter} onSkip={() => setTab("patient")} />}
+        {tab === "student" && isLearner && <Student language={language} />}
+        {tab === "history" && isLearner && <History />}
+        {tab === "patient" && <Patient language={language} />}
+      </main>
       <footer className="footer">
         Educational and information-gathering tool only. Not medical advice or a diagnosis. In an emergency go to the nearest hospital.
       </footer>

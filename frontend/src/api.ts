@@ -32,20 +32,61 @@ export interface PatientRecord {
   clinicianNote: string;
 }
 
+export type Role = "student" | "intern" | "patient" | "doctor" | "admin";
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: Role;
+  verified: boolean;
+}
+
+const TOKEN_KEY = "clerkifydx_token";
+export const getToken = () => localStorage.getItem(TOKEN_KEY);
+export const setToken = (t: string | null) => (t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY));
+
+export class ApiError extends Error {
+  constructor(message: string, public status: number) {
+    super(message);
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getToken();
   const res = await fetch(`/api${path}`, {
-    headers: { "Content-Type": "application/json" },
     ...init,
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error((data as { error?: string }).error ?? `Request failed (${res.status})`);
+  if (!res.ok) throw new ApiError((data as { error?: string }).error ?? `Request failed (${res.status})`, res.status);
   return data as T;
 }
 
 const post = <T,>(path: string, body: unknown) =>
   request<T>(path, { method: "POST", body: JSON.stringify(body) });
 
+export interface LearningHistory {
+  totals: { started: number; completed: number };
+  recurringOmissions: { item: string; count: number }[];
+  sessions: {
+    id: string;
+    title: string;
+    department?: string;
+    difficulty?: Difficulty;
+    submitted: boolean;
+    diagnosisAssessment: string | null;
+    createdAt: number;
+  }[];
+}
+
 export const api = {
+  register: (b: { email: string; password: string; name: string; role: Exclude<Role, "admin"> }) =>
+    post<{ user: User; token: string }>("/auth/register", b),
+  login: (email: string, password: string) => post<{ user: User; token: string }>("/auth/login", { email, password }),
+  me: () => request<{ user: User }>("/auth/me"),
+  learning: () => request<LearningHistory>("/me/learning"),
+  records: () =>
+    request<{ records: { id: string; createdAt: number; emergency: boolean; record: PatientRecord | null }[] }>("/me/records"),
   health: () => request<{ ok: boolean; model: string; mockLlm: boolean }>("/health"),
   cases: () => request<{ departments: string[]; cases: CaseSummary[] }>("/cases"),
   startSim: (caseId: string, language: Language) =>
