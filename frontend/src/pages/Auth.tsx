@@ -38,6 +38,7 @@ export default function Auth({ onAuth, onSkip, demo, initialMode = "login" }: { 
   return (
     <div className="auth">
       <aside className="auth-side">
+        <div className="cube-wrap" aria-hidden="true"><div className="cube"><i>Dx</i><i>🩺</i><i>❤️</i><i>🧬</i><i>💊</i><i>+</i></div></div>
         <h2>Practise safely. Get care organised.</h2>
         <ul className="assure">
           <li><Check /><div><b>Students</b><span>Clerk an AI patient and see what you missed.</span></div></li>

@@ -87,7 +87,7 @@ export default function App() {
       {user?.role === "doctor" && !user.verified && (
         <div className="banner">Your doctor account is pending verification. Professional features are not enabled yet.</div>
       )}
-      <main id="main" tabIndex={-1} className={tab === "landing" ? "wide" : ""}>
+      <main id="main" tabIndex={-1} className={tab === "landing" || tab === "auth" ? "wide" : ""}>
         <ErrorBoundary resetKey={tab}>
           {tab === "landing" && <Landing demo={demo} onAuth={enter} onPatient={() => setTab("patient")} onSignup={() => goAuth("register")} />}
           {tab === "auth" && <Auth onAuth={enter} onSkip={() => setTab("patient")} demo={demo} initialMode={authMode} key={authMode} />}
@@ -99,7 +99,7 @@ export default function App() {
           {tab === "admin" && user?.role === "admin" && <Admin />}
         </ErrorBoundary>
       </main>
-      <footer className="footer">
+      {(tab === "landing" || tab === "auth") && <footer className="footer">
         <div className="footer-in">
           <div className="f-brand">
             <span className="logo-static"><Logo /><Wordmark /></span>
@@ -130,7 +130,7 @@ export default function App() {
           <span>© {new Date().getFullYear()} ClerkifyDx</span>
           <span>Prototype built on Meta Muse Spark · Not a medical device</span>
         </div>
-      </footer>
+      </footer>}
     </div>
   );
 }
