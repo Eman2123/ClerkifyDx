@@ -5,14 +5,10 @@ import { config } from "./config.js";
 // which are safely representable as JS numbers, so parse them back to numbers.
 pg.types.setTypeParser(20, (v) => Number(v));
 
-if (!config.databaseUrl) {
-  throw new Error("DATABASE_URL is not set. Add your Neon connection string to backend/.env (or your host's env vars).");
-}
-
 /** Postgres (Neon) connection pool. Neon connection strings already include sslmode=require. */
 export const pool = new pg.Pool({
   connectionString: config.databaseUrl,
-  max: 10,
+  max: config.isProd ? 3 : 10, // serverless: many instances, keep each pool small
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 15_000,
 });

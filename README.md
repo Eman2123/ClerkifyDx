@@ -31,7 +31,7 @@ All calls go through one small client, `backend/src/llm.ts`, using the Meta Mode
 
 ## Architecture
 ```
-React + Vite (frontend)  --/api-->  Express + TypeScript (backend)
+React + Vite (static)  --/api-->  Express + TypeScript (Vercel serverless function)
                                       |-- auth / roles / consultations   -> Postgres (Neon)
                                       |-- safety.ts  (rule-based red flags, runs first)
                                       |-- llm.ts     -> Meta Model API (Muse Spark)  [mock mode if no key]
@@ -67,10 +67,23 @@ Without `MODEL_API_KEY` (or with `MOCK_LLM=true`) the backend runs in **mock mod
 ### Demo accounts
 `npm run seed` creates (password `Demo12345`): `student@clerkifydx.demo`, `intern@clerkifydx.demo`, `patient@clerkifydx.demo`, `doctor@clerkifydx.demo`. The seed script refuses to run when `NODE_ENV=production`. Set `ADMIN_EMAIL` / `ADMIN_PASSWORD` first to also get an admin.
 
-## Deploy (live demo)
-- **Backend (Render):** New > Blueprint > pick this repo (`render.yaml`). Set `DATABASE_URL` (Neon), `MODEL_API_KEY` and `CORS_ORIGIN` (your Vercel URL). `JWT_SECRET` is generated. Data lives in Neon, so it survives restarts and redeploys. Demo accounts are seeded at startup when `ALLOW_DEMO_SEED=true`.
-- **Frontend (Vercel):** import the repo, set **Root Directory** to `frontend`, add env `VITE_API_URL` = your Render URL. `frontend/vercel.json` handles install, build and SPA rewrites.
-- The public demo uses shared demo accounts. Do not enter real patient data.
+## Deploy (live demo): everything on Vercel
+One Vercel project serves both the React frontend (static) and the Express API (a serverless function at `/api/*`, same origin, so no CORS setup). Data lives in Neon Postgres.
+
+1. **Neon:** create a database and copy the pooled connection string (`...-pooler...?sslmode=require`).
+2. **Meta key:** create a Model API key at <https://dev.meta.ai>.
+3. **Vercel:** Add New > Project > import this repo. Leave **Root Directory** as the repo root (framework "Other"; `vercel.json` sets install, build and output). Add these environment variables:
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | Neon pooled connection string |
+| `MODEL_API_KEY` | Meta Model API key (without it the app runs in mock mode) |
+| `JWT_SECRET` | any long random string |
+| `ALLOW_DEMO_SEED` | `true` (public demo: seeds the shared demo accounts and shows "Try demo" buttons) |
+
+4. Deploy, then open `https://<your-app>.vercel.app/api/health`. It must show `"mockLlm": false`.
+
+`npm run build:vercel` bundles the API into `api/index.js` (esbuild) and builds the frontend. The bundle is committed as a fallback; Vercel regenerates it on every build. The public demo uses shared demo accounts. Do not enter real patient data.
 
 ## Features
 - 11 text cases (plus 2 visual cases once images are added) across Paediatrics, Obstetrics, Surgery and Internal Medicine, with department and difficulty filters

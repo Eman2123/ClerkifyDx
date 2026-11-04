@@ -11,6 +11,7 @@
     "dev:frontend": "npm run dev -w frontend",
     "build": "npm run build -w backend && npm run build -w frontend",
     "typecheck": "npm run typecheck -w backend && npm run typecheck -w frontend",
-    "seed": "npm run seed -w backend"
+    "seed": "npm run seed -w backend",
+    "build:vercel": "npm run bundle -w backend && npm run build -w frontend"
   }
 }
