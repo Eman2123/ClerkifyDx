@@ -1,4 +1,4 @@
-import { db } from "./db.js";
+import { queryOne } from "./db.js";
 import { register } from "./auth.js";
 import { profiles } from "./professional.js";
 
@@ -11,15 +11,15 @@ export const demoAccounts = [
   { email: "doctor@clerkifydx.demo", name: "Dr Demo Paediatrician", role: "doctor" as const },
 ];
 
-export function seedDemo(log: (m: string) => void = () => {}): void {
+export async function seedDemo(log: (m: string) => void = () => {}): Promise<void> {
   for (const a of demoAccounts) {
-    const r = register({ ...a, password: DEMO_PASSWORD });
+    const r = await register({ ...a, password: DEMO_PASSWORD });
     log(r ? `created  ${a.email}` : `exists   ${a.email}`);
   }
-  const doc = db.prepare("SELECT id FROM users WHERE email = ?").get("doctor@clerkifydx.demo") as { id: string } | undefined;
-  if (doc && !profiles.get(doc.id)) {
-    profiles.upsert(doc.id, "MDCN-DEMO-0001", "Paediatrics", "Demo doctor for the hackathon walkthrough. Not a real clinician.");
-    profiles.review(doc.id, true);
+  const doc = await queryOne<{ id: string }>("SELECT id FROM users WHERE email = $1", ["doctor@clerkifydx.demo"]);
+  if (doc && !(await profiles.get(doc.id))) {
+    await profiles.upsert(doc.id, "MDCN-DEMO-0001", "Paediatrics", "Demo doctor for the hackathon walkthrough. Not a real clinician.");
+    await profiles.review(doc.id, true);
     log("demo doctor marked verified");
   }
 }

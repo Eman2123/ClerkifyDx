@@ -10,9 +10,10 @@ import { patientReply, reviewClerking } from "./simulation.js";
 import { buildRecord, triageReply } from "./triage.js";
 import { AI_DISCLAIMER, EMERGENCY_MESSAGE, detectEmergency } from "./safety.js";
 import { login, loginSchema, optionalAuth, register, registerSchema, requireAuth, seedAdmin } from "./auth.js";
-import { consultMessages, consultations, profiles } from "./professional.js";
+import { consultMessages, consultations, profiles, type ConsRow } from "./professional.js";
 import { caseAvailable, imageFilePath, publicImage, readImage } from "./visual.js";
 import { seedDemo } from "./demo.js";
+import { initDb } from "./db.js";
 
 const app = express();
 if (config.isProd) app.set("trust proxy", 1); // behind Render/Railway: needed for correct client IPs in rate limiting
@@ -46,28 +47,28 @@ app.get("/api/health", (_req, res) => {
 });
 
 // ---------- Auth ----------
-app.post("/api/auth/register", (req, res) => {
+app.post("/api/auth/register", ah(async (req, res) => {
   const input = registerSchema.parse(req.body);
-  const result = register(input);
+  const result = await register(input);
   if (!result) return res.status(409).json({ error: "An account with this email already exists" });
   res.status(201).json(result);
-});
+}));
 
-app.post("/api/auth/login", (req, res) => {
+app.post("/api/auth/login", ah(async (req, res) => {
   const { email, password } = loginSchema.parse(req.body);
-  const result = login(email, password);
+  const result = await login(email, password);
   if (!result) return res.status(401).json({ error: "Incorrect email or password" });
   res.json(result);
-});
+}));
 
-app.get("/api/auth/me", requireAuth(), (req, res) => {
+app.get("/api/auth/me", requireAuth(), ah(async (req, res) => {
   res.json({ user: req.user });
-});
+}));
 
 // ---------- Student simulation (students & interns only) ----------
 const learner = requireAuth("student", "intern");
 
-app.get("/api/cases", learner, (req, res) => {
+app.get("/api/cases", learner, ah(async (req, res) => {
   const { department, difficulty } = req.query;
   const list = cases
     .filter(caseAvailable)
@@ -75,47 +76,47 @@ app.get("/api/cases", learner, (req, res) => {
     .filter((c) => !difficulty || c.difficulty === difficulty)
     .map(publicCase);
   res.json({ departments, cases: list });
-});
+}));
 
-app.post("/api/simulation/start", learner, (req, res) => {
+app.post("/api/simulation/start", learner, ah(async (req, res) => {
   const { caseId, language } = z.object({ caseId: z.string(), language: lang }).parse(req.body);
   const c = cases.find((x) => x.id === caseId);
   if (!c || !caseAvailable(c)) return res.status(404).json({ error: "Case not found" });
-  const s = sims.create(req.user!.id, caseId, language);
+  const s = await sims.create(req.user!.id, caseId, language);
   res.json({ sessionId: s.id, case: publicCase(c), notice: "This is a simulated patient for education only." });
-});
+}));
 
 // Case images: public on purpose (an <img> tag cannot send a bearer token). File names are neutral and never reveal the diagnosis.
-app.get("/api/case-images/:file", (req, res) => {
+app.get("/api/case-images/:file", ah(async (req, res) => {
   const known = cases.find((c) => c.image?.file === req.params.file);
   const path = known && imageFilePath(known.image!.file);
   if (!path) return res.status(404).json({ error: "Not found" });
   res.set("Cache-Control", "public, max-age=86400");
   res.sendFile(path);
-});
+}));
 
 app.post("/api/simulation/:id/image-read", learner, aiLimit, ah(async (req, res) => {
   const { interpretation } = z.object({ interpretation: z.string().min(3).max(1500) }).parse(req.body);
-  const session = sims.get(req.params.id, req.user!.id);
+  const session = await sims.get(req.params.id, req.user!.id);
   if (!session) return res.status(404).json({ error: "Session not found" });
   if (session.submitted) return res.status(409).json({ error: "This case was already submitted" });
   const c = caseTitle(session.caseId)!;
   if (!c.image || !caseAvailable(c)) return res.status(400).json({ error: "This case has no image" });
   const reading = await readImage(c, interpretation, session.language);
   session.transcript.push({ role: "learner", content: `[Image interpretation] ${interpretation}` });
-  sims.saveTranscript(session);
+  await sims.saveTranscript(session);
   res.json({ reading, disclaimer: "AI feedback is a learning aid and may contain errors." });
 }));
 
 app.post("/api/simulation/:id/message", learner, aiLimit, ah(async (req, res) => {
   const { message } = z.object({ message: z.string().min(1).max(500) }).parse(req.body);
-  const session = sims.get(req.params.id, req.user!.id);
+  const session = await sims.get(req.params.id, req.user!.id);
   if (!session) return res.status(404).json({ error: "Session not found" });
   if (session.submitted) return res.status(409).json({ error: "This case was already submitted" });
   const c = caseTitle(session.caseId)!;
   const reply = await patientReply(c, session, message);
   session.transcript.push({ role: "learner", content: message }, { role: "patient", content: reply });
-  sims.saveTranscript(session);
+  await sims.saveTranscript(session);
   res.json({ reply });
 }));
 
@@ -128,12 +129,12 @@ app.post("/api/simulation/:id/submit", learner, aiLimit, ah(async (req, res) => 
       reasoning: z.string().max(3000).optional(),
     })
     .parse(req.body);
-  const session = sims.get(req.params.id, req.user!.id);
+  const session = await sims.get(req.params.id, req.user!.id);
   if (!session) return res.status(404).json({ error: "Session not found" });
   if (session.submitted) return res.status(409).json({ error: "This case was already submitted" });
   const c = caseTitle(session.caseId)!;
   const feedback = await reviewClerking(c, session, body);
-  sims.saveResult(session.id, body, feedback);
+  await sims.saveResult(session.id, body, feedback);
   res.json({
     feedback,
     reveal: { diagnosis: c.diagnosis, differentials: c.differentials, learningPoints: c.learningPoints },
@@ -142,8 +143,8 @@ app.post("/api/simulation/:id/submit", learner, aiLimit, ah(async (req, res) => 
 }));
 
 /** Learning history: past cases, feedback and recurring omissions. */
-app.get("/api/me/learning", learner, (req, res) => {
-  const rows = sims.list(req.user!.id);
+app.get("/api/me/learning", learner, ah(async (req, res) => {
+  const rows = await sims.list(req.user!.id);
   const done = rows.filter((r) => r.submitted);
   const omissions = new Map<string, number>();
   for (const r of done) {
@@ -167,10 +168,10 @@ app.get("/api/me/learning", learner, (req, res) => {
       };
     }),
   });
-});
+}));
 
-app.get("/api/simulation/:id", learner, (req, res) => {
-  const s = sims.get(req.params.id, req.user!.id);
+app.get("/api/simulation/:id", learner, ah(async (req, res) => {
+  const s = await sims.get(req.params.id, req.user!.id);
   if (!s) return res.status(404).json({ error: "Session not found" });
   const c = caseTitle(s.caseId)!;
   res.json({
@@ -180,33 +181,33 @@ app.get("/api/simulation/:id", learner, (req, res) => {
     feedback: s.feedback ?? null,
     reveal: s.submitted ? { diagnosis: c.diagnosis, differentials: c.differentials, learningPoints: c.learningPoints } : null,
   });
-});
+}));
 
 // ---------- Patient triage ----------
 // Anonymous use is allowed on purpose: emergency guidance must never be blocked by registration.
-app.post("/api/triage/start", optionalAuth, (req, res) => {
+app.post("/api/triage/start", optionalAuth, ah(async (req, res) => {
   const { language, consent } = z.object({ language: lang, consent: z.boolean() }).parse(req.body);
   if (!consent) return res.status(400).json({ error: "Consent is required to continue." });
-  const s = triages.create(req.user?.id ?? null, language);
+  const s = await triages.create(req.user?.id ?? null, language);
   const first = language === "pcm" ? "Wetin dey worry you today?" : "What health concern brings you here today?";
   res.json({ sessionId: s.id, disclaimer: AI_DISCLAIMER[language], message: first });
-});
+}));
 
 app.post("/api/triage/:id/message", optionalAuth, aiLimit, ah(async (req, res) => {
   const { message } = z.object({ message: z.string().min(1).max(1000) }).parse(req.body);
-  const session = triages.get(req.params.id, req.user?.id ?? null);
+  const session = await triages.get(req.params.id, req.user?.id ?? null);
   if (!session) return res.status(404).json({ error: "Session not found" });
 
   // Deterministic safety check runs first and never depends on the LLM.
   if (detectEmergency(message)) {
     session.emergency = true;
     session.messages.push({ role: "user", content: message });
-    triages.save(session);
+    await triages.save(session);
     return res.json({ emergency: true, message: EMERGENCY_MESSAGE[session.language] });
   }
   try {
     const reply = await triageReply(session, message);
-    triages.save(session);
+    await triages.save(session);
     res.json({ emergency: session.emergency, message: reply });
   } catch {
     res.status(503).json({
@@ -217,10 +218,10 @@ app.post("/api/triage/:id/message", optionalAuth, aiLimit, ah(async (req, res) =
 }));
 
 app.post("/api/triage/:id/record", optionalAuth, aiLimit, ah(async (req, res) => {
-  const session = triages.get(req.params.id, req.user?.id ?? null);
+  const session = await triages.get(req.params.id, req.user?.id ?? null);
   if (!session) return res.status(404).json({ error: "Session not found" });
   const record = await buildRecord(session);
-  triages.saveRecord(session.id, record);
+  await triages.saveRecord(session.id, record);
   res.json({
     record,
     status: "not_reviewed_by_clinician",
@@ -228,9 +229,9 @@ app.post("/api/triage/:id/record", optionalAuth, aiLimit, ah(async (req, res) =>
   });
 }));
 
-app.get("/api/me/records", requireAuth("patient"), (req, res) => {
+app.get("/api/me/records", requireAuth("patient"), ah(async (req, res) => {
   res.json({
-    records: triages.list(req.user!.id).map((t) => ({
+    records: (await triages.list(req.user!.id)).map((t) => ({
       id: t.id,
       createdAt: t.createdAt,
       emergency: t.emergency,
@@ -238,99 +239,99 @@ app.get("/api/me/records", requireAuth("patient"), (req, res) => {
       status: "not_reviewed_by_clinician",
     })),
   });
-});
+}));
 
 // ---------- Doctors & admin verification ----------
-app.post("/api/doctor/profile", requireAuth("doctor"), (req, res) => {
+app.post("/api/doctor/profile", requireAuth("doctor"), ah(async (req, res) => {
   const b = z
     .object({ mdcnNumber: z.string().min(3).max(40), specialty: z.string().min(2).max(80), bio: z.string().max(600).default("") })
     .parse(req.body);
-  profiles.upsert(req.user!.id, b.mdcnNumber, b.specialty, b.bio);
+  await profiles.upsert(req.user!.id, b.mdcnNumber, b.specialty, b.bio);
   res.json({ status: "pending", notice: "Submitted. An administrator will check your registration before you are listed." });
-});
+}));
 
-app.get("/api/doctor/profile", requireAuth("doctor"), (req, res) => {
-  res.json({ profile: profiles.get(req.user!.id) ?? null });
-});
+app.get("/api/doctor/profile", requireAuth("doctor"), ah(async (req, res) => {
+  res.json({ profile: (await profiles.get(req.user!.id)) ?? null });
+}));
 
-app.get("/api/admin/doctors", requireAuth("admin"), (req, res) => {
+app.get("/api/admin/doctors", requireAuth("admin"), ah(async (req, res) => {
   const status = z.enum(["pending", "verified", "rejected"]).default("pending").parse(req.query.status ?? "pending");
-  res.json({ doctors: profiles.listByStatus(status) });
-});
+  res.json({ doctors: await profiles.listByStatus(status) });
+}));
 
-app.post("/api/admin/doctors/:userId/review", requireAuth("admin"), (req, res) => {
+app.post("/api/admin/doctors/:userId/review", requireAuth("admin"), ah(async (req, res) => {
   const { approve } = z.object({ approve: z.boolean() }).parse(req.body);
-  if (!profiles.review(req.params.userId, approve)) return res.status(404).json({ error: "Doctor profile not found" });
+  if (!(await profiles.review(req.params.userId, approve))) return res.status(404).json({ error: "Doctor profile not found" });
   res.json({ ok: true });
-});
+}));
 
 /** Verified doctors only. No contact details are exposed. */
-app.get("/api/doctors", requireAuth("patient"), (req, res) => {
-  res.json({ doctors: profiles.directory(typeof req.query.specialty === "string" ? req.query.specialty : undefined) });
-});
+app.get("/api/doctors", requireAuth("patient"), ah(async (req, res) => {
+  res.json({ doctors: await profiles.directory(typeof req.query.specialty === "string" ? req.query.specialty : undefined) });
+}));
 
 // ---------- Consultations (request -> doctor accepts/declines -> completed) ----------
-const consView = (c: NonNullable<ReturnType<typeof consultations.get>>) => ({
+const consView = (c: ConsRow) => ({
   id: c.id, status: c.status, reason: c.reason, doctorNote: c.doctor_note, createdAt: c.created_at, updatedAt: c.updated_at,
 });
 
-app.post("/api/consultations", requireAuth("patient"), (req, res) => {
+app.post("/api/consultations", requireAuth("patient"), ah(async (req, res) => {
   const b = z
     .object({ doctorId: z.string(), triageSessionId: z.string(), reason: z.string().max(500).default(""), shareSummary: z.boolean() })
     .parse(req.body);
   if (!b.shareSummary) return res.status(400).json({ error: "You must agree to share your summary with this doctor." });
-  const session = triages.get(b.triageSessionId, req.user!.id);
+  const session = await triages.get(b.triageSessionId, req.user!.id);
   if (!session || session.userId !== req.user!.id) return res.status(404).json({ error: "Intake session not found" });
   if (session.emergency)
     return res.status(409).json({ error: "Your intake flagged possible emergency symptoms. Please go to the nearest hospital now instead of booking an online consultation." });
   if (!session.record) return res.status(409).json({ error: "Please finish your intake summary first." });
-  const doc = profiles.directory().find((d) => d.id === b.doctorId);
+  const doc = (await profiles.directory()).find((d) => d.id === b.doctorId);
   if (!doc) return res.status(404).json({ error: "Doctor not available" });
-  if (consultations.duplicateOpen(req.user!.id, doc.id, session.id)) return res.status(409).json({ error: "You already have an open request with this doctor." });
-  const id = consultations.create(req.user!.id, doc.id, session.id, b.reason);
+  if (await consultations.duplicateOpen(req.user!.id, doc.id, session.id)) return res.status(409).json({ error: "You already have an open request with this doctor." });
+  const id = await consultations.create(req.user!.id, doc.id, session.id, b.reason);
   res.status(201).json({ id, status: "requested", notice: "Request sent. No doctor has reviewed your case yet. If your symptoms get worse, go to a hospital." });
-});
+}));
 
-app.get("/api/consultations", requireAuth("patient", "doctor"), (req, res) => {
+app.get("/api/consultations", requireAuth("patient", "doctor"), ah(async (req, res) => {
   if (req.user!.role === "patient") {
-    return res.json({ consultations: consultations.forPatient(req.user!.id).map((c) => ({ ...consView(c), doctorName: c.doctor_name, specialty: c.specialty })) });
+    return res.json({ consultations: (await consultations.forPatient(req.user!.id)).map((c) => ({ ...consView(c), doctorName: c.doctor_name, specialty: c.specialty })) });
   }
-  res.json({ consultations: consultations.forDoctor(req.user!.id).map((c) => ({ ...consView(c), patientName: c.patient_name })) });
-});
+  res.json({ consultations: (await consultations.forDoctor(req.user!.id)).map((c) => ({ ...consView(c), patientName: c.patient_name })) });
+}));
 
-app.get("/api/consultations/:id", requireAuth("doctor"), (req, res) => {
-  const c = consultations.get(req.params.id);
+app.get("/api/consultations/:id", requireAuth("doctor"), ah(async (req, res) => {
+  const c = await consultations.get(req.params.id);
   if (!c || c.doctor_id !== req.user!.id) return res.status(404).json({ error: "Not found" });
   // Minimum necessary: the patient's summary is shared only after the doctor accepts.
   const canSee = c.status === "accepted" || c.status === "completed";
-  const record = canSee ? (triages.getUnchecked(c.triage_session_id)?.record ?? null) : null;
+  const record = canSee ? ((await triages.getUnchecked(c.triage_session_id))?.record ?? null) : null;
   res.json({ ...consView(c), reason: c.reason, record, recordShared: canSee, notice: "AI-generated patient summary. Verify with the patient." });
-});
+}));
 
-app.post("/api/consultations/:id/respond", requireAuth("doctor"), (req, res) => {
+app.post("/api/consultations/:id/respond", requireAuth("doctor"), ah(async (req, res) => {
   if (!req.user!.verified) return res.status(403).json({ error: "Your account is not verified yet" });
   const { action, note } = z.object({ action: z.enum(["accept", "decline", "complete"]), note: z.string().max(1000).optional() }).parse(req.body);
-  const c = consultations.get(req.params.id);
+  const c = await consultations.get(req.params.id);
   if (!c || c.doctor_id !== req.user!.id) return res.status(404).json({ error: "Not found" });
   const ok =
-    action === "accept" ? consultations.transition(c.id, ["requested"], "accepted", note)
-    : action === "decline" ? consultations.transition(c.id, ["requested"], "declined", note)
-    : consultations.transition(c.id, ["accepted"], "completed", note);
+    action === "accept" ? await consultations.transition(c.id, ["requested"], "accepted", note)
+    : action === "decline" ? await consultations.transition(c.id, ["requested"], "declined", note)
+    : await consultations.transition(c.id, ["accepted"], "completed", note);
   if (!ok) return res.status(409).json({ error: `Cannot ${action} a consultation that is ${c.status}` });
-  res.json({ status: consultations.get(c.id)!.status });
-});
+  res.json({ status: (await consultations.get(c.id))!.status });
+}));
 
-app.post("/api/consultations/:id/cancel", requireAuth("patient"), (req, res) => {
-  const c = consultations.get(req.params.id);
+app.post("/api/consultations/:id/cancel", requireAuth("patient"), ah(async (req, res) => {
+  const c = await consultations.get(req.params.id);
   if (!c || c.patient_id !== req.user!.id) return res.status(404).json({ error: "Not found" });
-  if (!consultations.transition(c.id, ["requested", "accepted"], "cancelled")) return res.status(409).json({ error: `Cannot cancel a ${c.status} consultation` });
+  if (!(await consultations.transition(c.id, ["requested", "accepted"], "cancelled"))) return res.status(409).json({ error: `Cannot cancel a ${c.status} consultation` });
   res.json({ status: "cancelled" });
-});
+}));
 
 // Chat for an accepted consultation (polling-based). Participants only; opens only after the doctor accepts.
 const chatParty = requireAuth("patient", "doctor");
-const loadChat = (req: Request, res: Response) => {
-  const c = consultations.get(req.params.id);
+const loadChat = async (req: Request, res: Response) => {
+  const c = await consultations.get(req.params.id);
   if (!c || (c.patient_id !== req.user!.id && c.doctor_id !== req.user!.id)) {
     res.status(404).json({ error: "Not found" });
     return null;
@@ -341,25 +342,25 @@ const loadChat = (req: Request, res: Response) => {
   }
   return c;
 };
-const chatView = (c: NonNullable<ReturnType<typeof consultations.get>>, userId: string) =>
-  consultMessages.list(c.id).map((m) => ({ id: m.id, mine: m.sender_id === userId, from: m.sender_id === c.doctor_id ? "doctor" : "patient", body: m.body, createdAt: m.created_at }));
+const chatView = async (c: ConsRow, userId: string) =>
+  (await consultMessages.list(c.id)).map((m) => ({ id: m.id, mine: m.sender_id === userId, from: m.sender_id === c.doctor_id ? "doctor" : "patient", body: m.body, createdAt: m.created_at }));
 
-app.get("/api/consultations/:id/messages", chatParty, (req, res) => {
-  const c = loadChat(req, res);
+app.get("/api/consultations/:id/messages", chatParty, ah(async (req, res) => {
+  const c = await loadChat(req, res);
   if (!c) return;
-  res.json({ status: c.status, messages: chatView(c, req.user!.id) });
-});
+  res.json({ status: c.status, messages: await chatView(c, req.user!.id) });
+}));
 
-app.post("/api/consultations/:id/messages", chatParty, rateLimit({ windowMs: 60_000, limit: 40 }), (req, res) => {
+app.post("/api/consultations/:id/messages", chatParty, rateLimit({ windowMs: 60_000, limit: 40 }), ah(async (req, res) => {
   const { body } = z.object({ body: z.string().trim().min(1).max(1000) }).parse(req.body);
-  const c = loadChat(req, res);
+  const c = await loadChat(req, res);
   if (!c) return;
   if (c.status !== "accepted") return res.status(409).json({ error: "This consultation is completed; the chat is read-only." });
-  consultMessages.add(c.id, req.user!.id, body);
+  await consultMessages.add(c.id, req.user!.id, body);
   // Chat is not an emergency channel: patients writing red-flag symptoms get the same deterministic guidance.
   const emergencyNotice = req.user!.role === "patient" && detectEmergency(body) ? EMERGENCY_MESSAGE.en : undefined;
-  res.status(201).json({ messages: chatView(c, req.user!.id), emergencyNotice });
-});
+  res.status(201).json({ messages: await chatView(c, req.user!.id), emergencyNotice });
+}));
 
 // ---------- Errors ----------
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
@@ -368,8 +369,16 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: "Something went wrong" });
 });
 
-seedAdmin();
-if (config.demoSeed) seedDemo(console.log);
-app.listen(config.port, () => {
-  console.log(`ClerkifyDx API on :${config.port} (model: ${config.ai.model}, mock: ${config.ai.mock})`);
+async function main() {
+  await initDb();
+  await seedAdmin();
+  if (config.demoSeed) await seedDemo(console.log);
+  app.listen(config.port, () => {
+    console.log(`ClerkifyDx API on :${config.port} (model: ${config.ai.model}, mock: ${config.ai.mock}, db: postgres)`);
+  });
+}
+
+main().catch((err) => {
+  console.error("Failed to start:", err);
+  process.exit(1);
 });

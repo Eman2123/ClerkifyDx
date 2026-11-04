@@ -20,7 +20,7 @@ Replace [brackets]. Adjust lengths to each field's limit. Be honest: judges chec
 
 **How we use Meta's models:** Muse Spark 1.3 through the Meta Model API (OpenAI-compatible Chat Completions) for the AI patient, clerking feedback, patient intake, structured JSON outputs, and image understanding for visual cases. We use the Standard-mode model ID so prompts are not used for training. [Add anything else you actually use.]
 
-**Technical highlights:** TypeScript monorepo; Express + Zod; SQLite (node:sqlite); JWT + bcrypt; role-based access; rate limiting and helmet; one LLM client with mock mode and a tolerant JSON parser; rule-based safety layer independent of the model; image-mismatch guard on visual cases; Render + Vercel deployment.
+**Technical highlights:** TypeScript monorepo; Express + Zod; Postgres (Neon); JWT + bcrypt; role-based access; rate limiting and helmet; one LLM client with mock mode and a tolerant JSON parser; rule-based safety layer independent of the model; image-mismatch guard on visual cases; Render + Vercel deployment.
 
 **Challenges:** [e.g. keeping the AI patient from volunteering history or naming the diagnosis; making emergency handling independent of the LLM; getting reliable structured JSON from the model.]
 

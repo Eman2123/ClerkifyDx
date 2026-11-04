@@ -32,7 +32,7 @@ All calls go through one small client, `backend/src/llm.ts`, using the Meta Mode
 ## Architecture
 ```
 React + Vite (frontend)  --/api-->  Express + TypeScript (backend)
-                                      |-- auth / roles / consultations   -> SQLite (node:sqlite)
+                                      |-- auth / roles / consultations   -> Postgres (Neon)
                                       |-- safety.ts  (rule-based red flags, runs first)
                                       |-- llm.ts     -> Meta Model API (Muse Spark)  [mock mode if no key]
 ```
@@ -42,7 +42,7 @@ TypeScript monorepo (npm workspaces): `backend/`, `frontend/`.
 Requires Node.js 22+.
 ```bash
 npm install
-cp backend/.env.example backend/.env   # set MODEL_API_KEY and a long random JWT_SECRET
+cp backend/.env.example backend/.env   # set DATABASE_URL (Neon), MODEL_API_KEY and a long random JWT_SECRET
 npm run seed                            # demo accounts (local only)
 npm run dev:backend                     # http://localhost:4000
 npm run dev:frontend                    # http://localhost:5173
@@ -57,6 +57,7 @@ Without `MODEL_API_KEY` (or with `MOCK_LLM=true`) the backend runs in **mock mod
 | `MODEL_API_BASE_URL` | `https://api.meta.ai/v1` | API base URL |
 | `MODEL_NAME` | `muse-spark-1.3` | Model ID |
 | `MODEL_REASONING_EFFORT` | unset | Optional reasoning level |
+| `DATABASE_URL` | none (required) | Neon Postgres connection string (`...?sslmode=require`) |
 | `JWT_SECRET` | dev placeholder | **Set in production** |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | unset | Creates the first admin on startup |
 | `CORS_ORIGIN` | `http://localhost:5173` | Allowed frontend origin(s), comma separated |
@@ -67,7 +68,7 @@ Without `MODEL_API_KEY` (or with `MOCK_LLM=true`) the backend runs in **mock mod
 `npm run seed` creates (password `Demo12345`): `student@clerkifydx.demo`, `intern@clerkifydx.demo`, `patient@clerkifydx.demo`, `doctor@clerkifydx.demo`. The seed script refuses to run when `NODE_ENV=production`. Set `ADMIN_EMAIL` / `ADMIN_PASSWORD` first to also get an admin.
 
 ## Deploy (live demo)
-- **Backend (Render):** New > Blueprint > pick this repo (`render.yaml`). Set `MODEL_API_KEY` and `CORS_ORIGIN` (your Vercel URL). `JWT_SECRET` is generated. Demo accounts are seeded at startup because the free-tier disk is ephemeral.
+- **Backend (Render):** New > Blueprint > pick this repo (`render.yaml`). Set `DATABASE_URL` (Neon), `MODEL_API_KEY` and `CORS_ORIGIN` (your Vercel URL). `JWT_SECRET` is generated. Data lives in Neon, so it survives restarts and redeploys. Demo accounts are seeded at startup when `ALLOW_DEMO_SEED=true`.
 - **Frontend (Vercel):** import the repo, set **Root Directory** to `frontend`, add env `VITE_API_URL` = your Render URL. `frontend/vercel.json` handles install, build and SPA rewrites.
 - The public demo uses shared demo accounts. Do not enter real patient data.
 
@@ -110,12 +111,12 @@ Without `MODEL_API_KEY` (or with `MOCK_LLM=true`) the backend runs in **mock mod
 - AI patient and feedback quality depend on the model and can be wrong; feedback is educational only.
 - Visual cases need reviewed, properly licensed images added by the maintainer; the AI feedback on images is a learning aid and can be wrong.
 - Consultation chat is simple 4-second polling (no WebSockets, push notifications, read receipts or file sharing) and is not an emergency channel. No video.
-- SQLite is fine for a demo, not for multi-instance production.
+- Tables are created automatically at startup (`CREATE TABLE IF NOT EXISTS`); there is no migration tool yet, so later schema changes need manual SQL or a migration library.
 - Pidgin support is prompt-based and has not been evaluated with native-speaker clinicians.
 - Doctor verification is a manual admin check of a self-reported MDCN number; there is no registry lookup.
 
 ## Roadmap
-WebSocket chat and video, Postgres, scheduling, clinically reviewed case library and triage protocols, more visual cases, voice intake with Muse Voice Transcribe, referrals to hospitals.
+WebSocket chat and video, scheduling, clinically reviewed case library and triage protocols, more visual cases, voice intake with Muse Voice Transcribe, referrals to hospitals.
 
 ## License
 MIT, see [LICENSE](LICENSE).

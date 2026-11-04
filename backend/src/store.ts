@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Language } from "./cases.js";
 import type { ChatMessage } from "./llm.js";
-import { db } from "./db.js";
+import { exec, query, queryOne } from "./db.js";
 
 export const newId = () => randomUUID();
 
@@ -50,56 +50,56 @@ const triageFrom = (r: TriageRow): TriageSession => ({
 });
 
 export const sims = {
-  create(userId: string, caseId: string, language: Language): SimSession {
+  async create(userId: string, caseId: string, language: Language): Promise<SimSession> {
     const id = newId();
     const createdAt = Date.now();
-    db.prepare("INSERT INTO sim_sessions (id,user_id,case_id,language,created_at) VALUES (?,?,?,?,?)").run(id, userId, caseId, language, createdAt);
+    await exec("INSERT INTO sim_sessions (id,user_id,case_id,language,created_at) VALUES ($1,$2,$3,$4,$5)", [id, userId, caseId, language, createdAt]);
     return { id, userId, caseId, language, transcript: [], submitted: false, createdAt };
   },
   /** Only returns the session if it belongs to the user (prevents reading others' data). */
-  get(id: string, userId: string): SimSession | undefined {
-    const r = db.prepare("SELECT * FROM sim_sessions WHERE id = ? AND user_id = ?").get(id, userId) as SimRow | undefined;
+  async get(id: string, userId: string): Promise<SimSession | undefined> {
+    const r = await queryOne<SimRow>("SELECT * FROM sim_sessions WHERE id = $1 AND user_id = $2", [id, userId]);
     return r && simFrom(r);
   },
-  saveTranscript(s: SimSession) {
-    db.prepare("UPDATE sim_sessions SET transcript = ? WHERE id = ?").run(JSON.stringify(s.transcript), s.id);
+  async saveTranscript(s: SimSession): Promise<void> {
+    await exec("UPDATE sim_sessions SET transcript = $1 WHERE id = $2", [JSON.stringify(s.transcript), s.id]);
   },
-  saveResult(id: string, submission: unknown, feedback: unknown) {
-    db.prepare("UPDATE sim_sessions SET submitted = 1, submission = ?, feedback = ? WHERE id = ?").run(JSON.stringify(submission), JSON.stringify(feedback), id);
+  async saveResult(id: string, submission: unknown, feedback: unknown): Promise<void> {
+    await exec("UPDATE sim_sessions SET submitted = 1, submission = $1, feedback = $2 WHERE id = $3", [JSON.stringify(submission), JSON.stringify(feedback), id]);
   },
-  list(userId: string, limit = 50): SimSession[] {
-    const rows = db.prepare("SELECT * FROM sim_sessions WHERE user_id = ? ORDER BY created_at DESC LIMIT ?").all(userId, limit) as SimRow[];
+  async list(userId: string, limit = 50): Promise<SimSession[]> {
+    const rows = await query<SimRow>("SELECT * FROM sim_sessions WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2", [userId, limit]);
     return rows.map(simFrom);
   },
 };
 
 export const triages = {
-  create(userId: string | null, language: Language): TriageSession {
+  async create(userId: string | null, language: Language): Promise<TriageSession> {
     const id = newId();
     const createdAt = Date.now();
-    db.prepare("INSERT INTO triage_sessions (id,user_id,language,created_at) VALUES (?,?,?,?)").run(id, userId, language, createdAt);
+    await exec("INSERT INTO triage_sessions (id,user_id,language,created_at) VALUES ($1,$2,$3,$4)", [id, userId, language, createdAt]);
     return { id, userId, language, consent: true, messages: [], emergency: false, createdAt };
   },
   /** Anonymous sessions are only reachable by id (unguessable UUID); owned sessions require the owner. */
-  get(id: string, userId: string | null): TriageSession | undefined {
-    const r = db.prepare("SELECT * FROM triage_sessions WHERE id = ?").get(id) as TriageRow | undefined;
+  async get(id: string, userId: string | null): Promise<TriageSession | undefined> {
+    const r = await queryOne<TriageRow>("SELECT * FROM triage_sessions WHERE id = $1", [id]);
     if (!r) return undefined;
     if (r.user_id && r.user_id !== userId) return undefined;
     return triageFrom(r);
   },
   /** Skips the owner check. Only call after a consultation's access rules have been verified. */
-  getUnchecked(id: string): TriageSession | undefined {
-    const r = db.prepare("SELECT * FROM triage_sessions WHERE id = ?").get(id) as TriageRow | undefined;
+  async getUnchecked(id: string): Promise<TriageSession | undefined> {
+    const r = await queryOne<TriageRow>("SELECT * FROM triage_sessions WHERE id = $1", [id]);
     return r && triageFrom(r);
   },
-  save(s: TriageSession) {
-    db.prepare("UPDATE triage_sessions SET messages = ?, emergency = ? WHERE id = ?").run(JSON.stringify(s.messages), s.emergency ? 1 : 0, s.id);
+  async save(s: TriageSession): Promise<void> {
+    await exec("UPDATE triage_sessions SET messages = $1, emergency = $2 WHERE id = $3", [JSON.stringify(s.messages), s.emergency ? 1 : 0, s.id]);
   },
-  saveRecord(id: string, record: unknown) {
-    db.prepare("UPDATE triage_sessions SET record = ? WHERE id = ?").run(JSON.stringify(record), id);
+  async saveRecord(id: string, record: unknown): Promise<void> {
+    await exec("UPDATE triage_sessions SET record = $1 WHERE id = $2", [JSON.stringify(record), id]);
   },
-  list(userId: string, limit = 50): TriageSession[] {
-    const rows = db.prepare("SELECT * FROM triage_sessions WHERE user_id = ? ORDER BY created_at DESC LIMIT ?").all(userId, limit) as TriageRow[];
+  async list(userId: string, limit = 50): Promise<TriageSession[]> {
+    const rows = await query<TriageRow>("SELECT * FROM triage_sessions WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2", [userId, limit]);
     return rows.map(triageFrom);
   },
 };

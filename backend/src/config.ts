@@ -3,7 +3,8 @@ import "dotenv/config";
 export const config = {
   port: Number(process.env.PORT ?? 4000),
   corsOrigins: (process.env.CORS_ORIGIN ?? "http://localhost:5173").split(",").map((o) => o.trim().replace(/\/$/, "")),
-  dbPath: process.env.DB_PATH ?? "./data/clerkifydx.db",
+  // Neon (Postgres) connection string, e.g. postgresql://user:pass@ep-xxx-pooler.region.aws.neon.tech/neondb?sslmode=require
+  databaseUrl: process.env.DATABASE_URL ?? "",
   jwtSecret: process.env.JWT_SECRET ?? "dev-only-secret-change-me",
   // Public hackathon demo: seeds shared demo accounts at startup and shows "Try demo" buttons. Never enable with real users.
   demoSeed: process.env.ALLOW_DEMO_SEED === "true",

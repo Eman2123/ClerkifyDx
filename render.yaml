@@ -20,5 +20,5 @@ services:
         sync: false          # your Vercel URL, e.g. https://clerkifydx.vercel.app
       - key: ALLOW_DEMO_SEED # public demo only: seeds shared demo accounts + shows "Try demo" buttons
         value: "true"
-      - key: DB_PATH
-        value: ./data/clerkifydx.db
+      - key: DATABASE_URL
+        sync: false          # your Neon connection string (pooled host, sslmode=require)
