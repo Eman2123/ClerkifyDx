@@ -107,33 +107,34 @@ export default function Student({ language }: { language: Language }) {
   const visible = cases.filter((c) => (dept === "all" || c.department === dept) && (level === "all" || c.difficulty === level));
 
   if (!session) {
+    const depts = ["all", ...new Set(cases.map((c) => c.department))];
+    const levels = ["all", "simple", "intermediate", "complex"];
     return (
       <section>
         <div className="page-head"><h2>{tr(language, "choose_case")}</h2><p className="muted">{tr(language, "choose_sub")}</p></div>
         {error && <p className="error">{error}</p>}
-        {loadingCases && <p className="muted">Loading cases...</p>}
-        <div className="row filters">
-          <select value={dept} onChange={(e) => setDept(e.target.value)} aria-label="Department">
-            <option value="all">All departments</option>
-            {[...new Set(cases.map((c) => c.department))].map((d) => <option key={d}>{d}</option>)}
-          </select>
-          <select value={level} onChange={(e) => setLevel(e.target.value)} aria-label="Difficulty">
-            <option value="all">All levels</option>
-            <option value="simple">Simple</option>
-            <option value="intermediate">Intermediate</option>
-            <option value="complex">Complex</option>
-          </select>
+        <div className="filterbar">
+          <div className="chipset" role="group" aria-label="Department">
+            {depts.map((d) => <button key={d} className="fchip" aria-pressed={dept === d} onClick={() => setDept(d)}>{d === "all" ? "All departments" : d}</button>)}
+          </div>
+          <div className="chipset" role="group" aria-label="Difficulty">
+            {levels.map((l) => <button key={l} className="fchip" aria-pressed={level === l} onClick={() => setLevel(l)}>{l === "all" ? "All levels" : l}</button>)}
+          </div>
         </div>
-        {!loadingCases && visible.length === 0 && !error && <p className="muted">No cases match these filters.</p>}
+        {loadingCases && <p className="muted">Loading cases...</p>}
+        {!loadingCases && visible.length === 0 && !error && <div className="empty"><b>No cases match these filters</b><span>Try another department or level.</span></div>}
         <div className="grid">
           {visible.map((c) => (
             <button key={c.id} className={`card ${c.difficulty}`} onClick={() => start(c)}>
               <span className="dept">{c.department}{c.image ? " · includes image" : ""}</span>
               <strong>{c.title}</strong>
               <span className="pres">{c.presentation}</span>
-              <span className="dots" aria-label={`Difficulty: ${c.difficulty}`}>
-                {["simple", "intermediate", "complex"].map((l, i) => <i key={l} className={i <= ["simple", "intermediate", "complex"].indexOf(c.difficulty) ? "on" : ""} />)}
-                &nbsp;{c.difficulty}
+              <span className="card-foot">
+                <span className="dots" aria-label={`Difficulty: ${c.difficulty}`}>
+                  {["simple", "intermediate", "complex"].map((l, i) => <i key={l} className={i <= ["simple", "intermediate", "complex"].indexOf(c.difficulty) ? "on" : ""} />)}
+                  &nbsp;{c.difficulty}
+                </span>
+                <span className="go">Start case →</span>
               </span>
             </button>
           ))}
@@ -142,95 +143,102 @@ export default function Student({ language }: { language: Language }) {
     );
   }
 
+  const asked = msgs.filter((m) => m.from === "you").length;
+  const L = language;
+  const quick = [1, 2, 3, 4, 5, 6] as const;
+  const dx = result?.feedback.diagnosisAssessment ?? "";
+  const tone = /incorrect|wrong/i.test(dx) ? "bad" : /partial/i.test(dx) ? "mid" : "good";
+
   return (
-    <section className="two-col">
-      <div className="panel">
-        <h2>{session.c.title}</h2>
-        <p className="muted">Simulated patient, for education only. Ask questions to take a history.</p>
-        {session.c.image && (
-          <div className="imgcase">
-            <img src={apiUrl(session.c.image.url)} alt={session.c.image.alt} />
-            <small className="muted">{session.c.image.modality}. {session.c.image.credit}</small>
-            <textarea
-              rows={3}
-              value={imgText}
-              onChange={(e) => setImgText(e.target.value)}
-              placeholder="Describe what you see in the image, then say what it suggests"
-            />
-            <button className="secondary" onClick={checkImage} disabled={busy || imgText.trim().length < 3}>Check my image reading</button>
-            {imgReading && (
-              <div className="feedback">
-                {imgReading.imageMismatch && <p className="error">The AI thinks this image may not match the case reference. Treat this feedback with caution.</p>}
-                <p><b>Rating:</b> {imgReading.rating.replace("_", " ")}</p>
-                <List title="You got right" items={imgReading.correct} />
-                <List title="You missed" items={imgReading.missed} />
-                <p><b>Teaching point:</b> {imgReading.teachingPoint}</p>
-                <p className="muted">AI feedback is a learning aid and may contain errors.</p>
-              </div>
-            )}
+    <section className="simwrap">
+      <div className="sim-bar">
+        <button className="secondary" onClick={() => setSession(null)}>← {tr(L, "back")}</button>
+        <div className="sim-title"><h2>{session.c.title}</h2><span className="tag">{session.c.department}</span></div>
+        <span className="asked"><b>{asked}</b> {tr(L, "asked")}</span>
+      </div>
+
+      <div className="sim">
+        <div className="panel consult">
+          <div className="pt-head">
+            <span className="pt-av" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="8" r="4" /><path d="M4 21c1-5 5-7 8-7s7 2 8 7" /></svg></span>
+            <div><b>Simulated patient</b><span className="muted">{tr(L, "sim_note")}</span></div>
           </div>
-        )}
-        <div className="chat">
-          {msgs.map((m, i) => (
-            <div key={i} className={`bubble ${m.from}`}>
-              {m.text}
+          <div className="cc"><small>{tr(L, "presenting")}</small>{session.c.presentation}</div>
+          {session.c.image && (
+            <div className="imgcase">
+              <img src={apiUrl(session.c.image.url)} alt={session.c.image.alt} />
+              <small className="muted">{session.c.image.modality}. {session.c.image.credit}</small>
+              <textarea rows={3} value={imgText} onChange={(e) => setImgText(e.target.value)} placeholder="Describe what you see in the image, then say what it suggests" />
+              <button className="secondary" onClick={checkImage} disabled={busy || imgText.trim().length < 3}>Check my image reading</button>
+              {imgReading && (
+                <div className="feedback">
+                  {imgReading.imageMismatch && <p className="error">The AI thinks this image may not match the case reference. Treat this feedback with caution.</p>}
+                  <p><b>Rating:</b> {imgReading.rating.replace("_", " ")}</p>
+                  <List title="You got right" items={imgReading.correct} />
+                  <List title="You missed" items={imgReading.missed} />
+                  <p><b>Teaching point:</b> {imgReading.teachingPoint}</p>
+                  <p className="muted">AI feedback is a learning aid and may contain errors.</p>
+                </div>
+              )}
             </div>
-          ))}
-          {busy && <div className="bubble patient">...</div>}
-          <div ref={endRef} />
-        </div>
-        <div className="row">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && send()}
-            placeholder={tr(language, "ask_ph")}
-          />
-          <button onClick={send} disabled={busy}>{tr(language, "send")}</button>
-        </div>
-      </div>
-
-      <div className="panel">
-        <h2>{tr(language, "clerking")}</h2>
-        <label>{tr(language, "hist_sum")}
-          <textarea rows={5} value={form.historySummary} onChange={(e) => setForm({ ...form, historySummary: e.target.value })} />
-        </label>
-        <label>{tr(language, "lead_dx")}
-          <input value={form.diagnosis} onChange={(e) => setForm({ ...form, diagnosis: e.target.value })} />
-        </label>
-        <label>{tr(language, "diffs")}
-          <input value={form.differentials} onChange={(e) => setForm({ ...form, differentials: e.target.value })} />
-        </label>
-        <label>{tr(language, "reasoning")}
-          <textarea rows={3} value={form.reasoning} onChange={(e) => setForm({ ...form, reasoning: e.target.value })} />
-        </label>
-        <div className="row">
-          <button onClick={submit} disabled={busy || !form.historySummary || !form.diagnosis}>{tr(language, "submit_fb")}</button>
-          <button className="secondary" onClick={() => setSession(null)}>{tr(language, "new_case")}</button>
-        </div>
-        {error && <p className="error">{error}</p>}
-
-        {result && (
-          <div className="feedback">
-            <h3>{tr(language, "feedback")}</h3>
-            <p>{result.feedback.overallSummary}</p>
-            <p><b>Diagnosis:</b> {result.feedback.diagnosisAssessment.replace("_", " ")} (reference: {result.reveal.diagnosis})</p>
-            <List title="Strengths" items={result.feedback.strengths} />
-            {result.feedback.missed.length > 0 && (
-              <>
-                <h4>Missed</h4>
-                <ul>{result.feedback.missed.map((m, i) => <li key={i}><b>{m.item}:</b> {m.whyItMatters}</li>)}</ul>
-              </>
-            )}
-            <List title="Red flags missed" items={result.feedback.redFlagsMissed} />
-            <p><b>Reasoning:</b> {result.feedback.reasoningFeedback}</p>
-            <List title="How to improve" items={result.feedback.improvements} />
-            <List title="Suggested study" items={result.feedback.suggestedStudy} />
-            <List title="Learning points" items={result.reveal.learningPoints} />
-            <p className="muted">{result.disclaimer}</p>
+          )}
+          <div className="chat" aria-live="polite">
+            {msgs.slice(1).length === 0 && <p className="chat-hint">Start by asking an open question, then narrow down.</p>}
+            {msgs.slice(1).map((m, i) => <div key={i} className={`bubble ${m.from}`}>{m.text}</div>)}
+            {busy && <div className="bubble patient typing" aria-label="Patient is replying"><i /><i /><i /></div>}
+            <div ref={endRef} />
           </div>
-        )}
+          <div className="quick" aria-label={tr(L, "quick")}>
+            {quick.map((n) => <button key={n} className="fchip" onClick={() => setInput(tr(L, `qt${n}` as "qt1"))}>{tr(L, `q${n}` as "q1")}</button>)}
+          </div>
+          <div className="row">
+            <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder={tr(L, "ask_ph")} aria-label={tr(L, "ask_ph")} />
+            <button onClick={send} disabled={busy || !input.trim()}>{tr(L, "send")}</button>
+          </div>
+        </div>
+
+        <div className="panel clerk">
+          <h2>{tr(L, "clerking")}</h2>
+          <p className="muted">Fill this in from what the patient told you, then submit for feedback.</p>
+          <label><span className="n">1</span>{tr(L, "hist_sum")}
+            <textarea rows={5} value={form.historySummary} onChange={(e) => setForm({ ...form, historySummary: e.target.value })} />
+          </label>
+          <label><span className="n">2</span>{tr(L, "lead_dx")}
+            <input value={form.diagnosis} onChange={(e) => setForm({ ...form, diagnosis: e.target.value })} />
+          </label>
+          <label><span className="n">3</span>{tr(L, "diffs")}
+            <input value={form.differentials} onChange={(e) => setForm({ ...form, differentials: e.target.value })} />
+          </label>
+          <label><span className="n">4</span>{tr(L, "reasoning")}
+            <textarea rows={3} value={form.reasoning} onChange={(e) => setForm({ ...form, reasoning: e.target.value })} />
+          </label>
+          {error && <p className="error">{error}</p>}
+          <div className="row">
+            <button className="big" onClick={submit} disabled={busy || !form.historySummary || !form.diagnosis}>{tr(L, "submit_fb")}</button>
+            <button className="secondary" onClick={() => setSession(null)}>{tr(L, "new_case")}</button>
+          </div>
+        </div>
       </div>
+
+      {result && (
+        <div className="result">
+          <div className={`verdict ${tone}`}>
+            <div><small>{tr(L, "feedback")}</small><h3>Diagnosis: {dx.replace("_", " ")}</h3><p>{result.feedback.overallSummary}</p></div>
+            <div className="ref"><small>Reference diagnosis</small><b>{result.reveal.diagnosis}</b></div>
+          </div>
+          <div className="rgrid">
+            <div className="rbox good"><List title="Strengths" items={result.feedback.strengths} /></div>
+            {result.feedback.missed.length > 0 && (
+              <div className="rbox mid"><h4>Missed</h4><ul>{result.feedback.missed.map((m, i) => <li key={i}><b>{m.item}:</b> {m.whyItMatters}</li>)}</ul></div>
+            )}
+            {result.feedback.redFlagsMissed.length > 0 && <div className="rbox bad"><List title="Red flags missed" items={result.feedback.redFlagsMissed} /></div>}
+            <div className="rbox"><h4>Reasoning</h4><p>{result.feedback.reasoningFeedback}</p></div>
+            <div className="rbox"><List title="How to improve" items={result.feedback.improvements} /><List title="Suggested study" items={result.feedback.suggestedStudy} /></div>
+            <div className="rbox"><List title="Learning points" items={result.reveal.learningPoints} /></div>
+          </div>
+          <p className="muted">{result.disclaimer}</p>
+        </div>
+      )}
     </section>
   );
 }

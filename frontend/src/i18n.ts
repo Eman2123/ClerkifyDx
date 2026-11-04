@@ -1,6 +1,9 @@
 import type { Language } from "./api";
 
 const en = {
+  back: "All cases", presenting: "Presenting complaint", asked: "Questions asked", quick: "Quick starters", sim_note: "Simulated patient, for education only. Ask questions to take a history.",
+  q1: "Onset", q2: "Character", q3: "Associated", q4: "Past history", q5: "Drugs & allergy", q6: "Family & social",
+  qt1: "How long has this been going on?", qt2: "Can you describe the main symptom for me?", qt3: "Do you have any other symptoms?", qt4: "Any past illnesses or operations?", qt5: "Are you taking any medicines? Any allergies?", qt6: "Any illness in the family? Do you smoke or drink?",
   nav_sim: "Simulation", nav_learn: "My learning", nav_intake: "Patient intake", nav_consults: "My consultations",
   footer: "Educational and information-gathering tool only. Not medical advice or a diagnosis. In an emergency go to the nearest hospital.",
   intake_title: "Tell us what is wrong",
@@ -17,6 +20,9 @@ const en = {
   diffs: "Differentials (comma separated)", reasoning: "Reasoning (optional)", submit_fb: "Submit for feedback", new_case: "New case", feedback: "Feedback",
 };
 const pcm: Record<keyof typeof en, string> = {
+  back: "All cases", presenting: "Wetin bring am come", asked: "Questions wey you don ask", quick: "Quick questions", sim_note: "Na pretend patient, for learning only. Ask question make you take the history.",
+  q1: "How e start", q2: "The pain/wahala", q3: "Other signs", q4: "Old sickness", q5: "Drug & allergy", q6: "Family & habits",
+  qt1: "Since when e start?", qt2: "Describe the main wahala for me.", qt3: "You dey feel any other thing?", qt4: "You don get any sickness or operation before?", qt5: "You dey take any drug? Any drug dey make your body react?", qt6: "Anybody for your family get this kind sickness? You dey smoke or drink?",
   nav_sim: "Practice", nav_learn: "Wetin I don learn", nav_intake: "Tell us wetin dey do you", nav_consults: "My doctor talk",
   footer: "Na for learning and to collect information only. E no be medical advice or diagnosis. If emergency dey, run go the nearest hospital.",
   intake_title: "Tell us wetin dey do you",
