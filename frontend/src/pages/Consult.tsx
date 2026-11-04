@@ -89,7 +89,9 @@ export function ConsultChat({ id, status }: { id: string; status: string }) {
     const t = status === "accepted" ? setInterval(load, 4000) : undefined;
     return () => { alive = false; if (t) clearInterval(t); };
   }, [id, status]);
-  useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [msgs.length]);
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [msgs.length]);
 
   async function send() {
     const body = text.trim();

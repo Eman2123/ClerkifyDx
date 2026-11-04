@@ -20,7 +20,9 @@ export default function Patient({ language, user }: { language: Language; user: 
   const [error, setError] = useState("");
   const [record, setRecord] = useState<{ record: PatientRecord; notice: string } | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
-  useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [msgs]);
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [msgs]);
 
   async function start() {
     setError("");

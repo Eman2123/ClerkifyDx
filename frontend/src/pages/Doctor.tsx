@@ -16,7 +16,7 @@ export default function Doctor({ user }: { user: User }) {
     api.doctorProfile().then((r) => setProfile(r.profile)).catch((e: Error) => setError(e.message));
     if (user.verified) api.consultations().then((r) => setList(r.consultations)).catch((e: Error) => setError(e.message));
   };
-  useEffect(load, [user.verified]);
+  useEffect(() => { load(); }, [user.verified]);
 
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault();

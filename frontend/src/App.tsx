@@ -9,7 +9,7 @@ import Doctor from "./pages/Doctor";
 import { MyConsultations } from "./pages/Consult";
 import { tr } from "./i18n";
 import Landing from "./pages/Landing";
-import { Logo, initials } from "./ui";
+import { ErrorBoundary, Logo, Wordmark, initials } from "./ui";
 
 type Tab = "landing" | "student" | "history" | "patient" | "consults" | "doctor" | "admin" | "auth";
 
@@ -55,8 +55,9 @@ export default function App() {
 
   return (
     <div className="app">
+      <a className="skip" href="#main">Skip to content</a>
       <header className="header">
-        <button className="logo" onClick={home} aria-label="ClerkifyDx home"><Logo />Clerkify<b>Dx</b></button>
+        <button className="logo" onClick={home} aria-label="ClerkifyDx home"><Logo /><Wordmark /></button>
         <nav aria-label="Main">
           {!user && nav("landing", "Home")}
           {isLearner && <>{nav("student", tr(language, "nav_sim"))}{nav("history", tr(language, "nav_learn"))}</>}
@@ -86,18 +87,49 @@ export default function App() {
       {user?.role === "doctor" && !user.verified && (
         <div className="banner">Your doctor account is pending verification. Professional features are not enabled yet.</div>
       )}
-      <main className={tab === "landing" ? "wide" : ""}>
-        {tab === "landing" && <Landing demo={demo} onAuth={enter} onPatient={() => setTab("patient")} onSignup={() => goAuth("register")} />}
-        {tab === "auth" && <Auth onAuth={enter} onSkip={() => setTab("patient")} demo={demo} initialMode={authMode} key={authMode} />}
-        {tab === "student" && isLearner && <Student language={language} />}
-        {tab === "history" && isLearner && <History />}
-        {tab === "patient" && <Patient language={language} user={user} />}
-        {tab === "consults" && user?.role === "patient" && <MyConsultations />}
-        {tab === "doctor" && user?.role === "doctor" && <Doctor user={user} />}
-        {tab === "admin" && user?.role === "admin" && <Admin />}
+      <main id="main" tabIndex={-1} className={tab === "landing" ? "wide" : ""}>
+        <ErrorBoundary resetKey={tab}>
+          {tab === "landing" && <Landing demo={demo} onAuth={enter} onPatient={() => setTab("patient")} onSignup={() => goAuth("register")} />}
+          {tab === "auth" && <Auth onAuth={enter} onSkip={() => setTab("patient")} demo={demo} initialMode={authMode} key={authMode} />}
+          {tab === "student" && isLearner && <Student language={language} />}
+          {tab === "history" && isLearner && <History />}
+          {tab === "patient" && <Patient language={language} user={user} />}
+          {tab === "consults" && user?.role === "patient" && <MyConsultations />}
+          {tab === "doctor" && user?.role === "doctor" && <Doctor user={user} />}
+          {tab === "admin" && user?.role === "admin" && <Admin />}
+        </ErrorBoundary>
       </main>
       <footer className="footer">
-        {tr(language, "footer")}
+        <div className="footer-in">
+          <div className="f-brand">
+            <span className="logo-static"><Logo /><Wordmark /></span>
+            <p>AI-assisted clerking practice for medical students and structured intake for patients.</p>
+          </div>
+          <div>
+            <h4>Product</h4>
+            <ul>
+              {!user && <li><button onClick={() => setTab("landing")}>Home</button></li>}
+              {isLearner && <li><button onClick={() => setTab("student")}>{tr(language, "nav_sim")}</button></li>}
+              {(!user || user.role === "patient" || isLearner) && <li><button onClick={() => setTab("patient")}>{tr(language, "nav_intake")}</button></li>}
+              {user?.role === "patient" && <li><button onClick={() => setTab("consults")}>{tr(language, "nav_consults")}</button></li>}
+              {!user && <li><button onClick={() => goAuth("login")}>Log in</button></li>}
+              {!user && <li><button onClick={() => goAuth("register")}>Sign up</button></li>}
+            </ul>
+          </div>
+          <div>
+            <h4>Safety</h4>
+            <ul className="f-safe">
+              <li>Emergency signs are checked before any AI reply</li>
+              <li>Doctors are verified by an administrator</li>
+              <li>Your summary is shared only with your consent</li>
+            </ul>
+          </div>
+        </div>
+        <p className="f-note">{tr(language, "footer")}</p>
+        <div className="f-bottom">
+          <span>© {new Date().getFullYear()} ClerkifyDx</span>
+          <span>Prototype built on Meta Muse Spark · Not a medical device</span>
+        </div>
       </footer>
     </div>
   );

@@ -34,7 +34,10 @@ export default function Student({ language }: { language: Language }) {
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoadingCases(false));
   }, []);
-  useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [msgs]);
+  useEffect(() => {
+    // Block body on purpose: an effect must not return the scroll call's result.
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [msgs]);
 
   async function start(c: CaseSummary) {
     setError("");
