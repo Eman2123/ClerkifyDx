@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { api, setToken, type Role, type User } from "../api";
+import { gsap, prefersReduced } from "../motion";
 import { Check, Logo, ThemeToggle, Wordmark, type Theme } from "../ui";
 
 const DEMOS = [
@@ -19,6 +20,20 @@ export default function Auth({ onAuth, onSkip, onBack, demo, initialMode = "logi
   const [f, setF] = useState({ name: "", email: "", password: "", role: "student" as Exclude<Role, "admin"> });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (prefersReduced() || !root.current) return;
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+      tl.from(".auth-side", { x: -60, opacity: 0, duration: 0.8 })
+        .from(".auth-brand, .auth-side h2", { y: 20, opacity: 0, stagger: 0.1, duration: 0.5 }, "-=0.5")
+        .from(".auth-side .assure li", { x: -24, opacity: 0, stagger: 0.12, duration: 0.5 }, "-=0.3")
+        .from(".auth-form", { y: 50, opacity: 0, duration: 0.8 }, 0.15)
+        .from(".auth-form > *", { y: 14, opacity: 0, stagger: 0.05, duration: 0.4 }, "-=0.5");
+    }, root);
+    return () => ctx.revert();
+  }, []);
 
   async function tryDemo(email: string) {
     setBusy(true); setError("");
@@ -36,7 +51,7 @@ export default function Auth({ onAuth, onSkip, onBack, demo, initialMode = "logi
   }
 
   return (
-    <div className="auth">
+    <div className="auth" ref={root}>
       <div className="auth-top"><ThemeToggle theme={theme} onChange={onTheme} /></div>
       <aside className="auth-side">
         <button type="button" className="auth-brand" onClick={onBack} aria-label="ClerkifyDx home"><Logo /><Wordmark /></button>

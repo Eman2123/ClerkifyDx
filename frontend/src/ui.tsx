@@ -1,4 +1,6 @@
-import { Component, useEffect, useState, type ReactNode } from "react";
+import { Component, useEffect, useRef, useState, type ReactNode } from "react";
+import type { User } from "./api";
+import { gsap, prefersReduced } from "./motion";
 
 export function Logo() {
   return (
@@ -76,5 +78,44 @@ export function ThemeToggle({ theme, onChange }: { theme: Theme; onChange: (t: T
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
       )}
     </button>
+  );
+}
+
+export function UserMenu({ user, onLogout }: { user: User; onLogout: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", away);
+    document.addEventListener("keydown", esc);
+    if (!prefersReduced() && ref.current) {
+      gsap.fromTo(ref.current.querySelector(".udrop"), { y: -10, opacity: 0, scale: 0.95 }, { y: 0, opacity: 1, scale: 1, duration: 0.25, ease: "power3.out" });
+    }
+    return () => { document.removeEventListener("mousedown", away); document.removeEventListener("keydown", esc); };
+  }, [open]);
+  const first = user.name.split(" ")[0];
+  return (
+    <div className="umenu" ref={ref}>
+      <button type="button" className="uchip" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <span className="avatar" aria-hidden="true">{initials(user.name)}</span>
+        <span className="uname">{first}</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={open ? "flip" : ""}><path d="m6 9 6 6 6-6" /></svg>
+      </button>
+      {open && (
+        <div className="udrop" role="menu">
+          <div className="uhead">
+            <span className="avatar big" aria-hidden="true">{initials(user.name)}</span>
+            <div>
+              <b>{user.name}</b>
+              <small>{user.email}</small>
+              <span className={`role role-${user.role}`}>{user.role}</span>
+            </div>
+          </div>
+          <button type="button" role="menuitem" className="secondary" onClick={onLogout}>Log out</button>
+        </div>
+      )}
+    </div>
   );
 }

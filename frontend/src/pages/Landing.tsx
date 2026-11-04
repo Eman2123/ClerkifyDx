@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { api, setToken, type User } from "../api";
+import { gsap, ScrollTrigger, prefersReduced } from "../motion";
 
 
 const I = {
@@ -34,6 +35,51 @@ const DEMOS = [
 export default function Landing({ demo, onAuth, onPatient, onSignup }: { demo: boolean; onAuth: (u: User) => void; onPatient: () => void; onSignup: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const root = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (prefersReduced() || !root.current) return;
+    const scope = root.current;
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+      tl.from(".hero .badge", { y: 20, opacity: 0, duration: 0.6 })
+        .from(".hero h1", { y: 44, opacity: 0, duration: 0.85 }, "-=0.3")
+        .from(".hero .lead", { y: 30, opacity: 0, duration: 0.7 }, "-=0.5")
+        .from(".hero .cta button", { y: 24, opacity: 0, stagger: 0.1, duration: 0.6 }, "-=0.4")
+        .from(".hero .chips span", { scale: 0.8, opacity: 0, stagger: 0.08, duration: 0.4 }, "-=0.3")
+        .from(".hero .sheet", { x: 90, opacity: 0, rotate: 3, duration: 1 }, 0.2)
+        .from(".sheet .bubble", { y: 16, opacity: 0, stagger: 0.35, duration: 0.5 }, "-=0.5")
+        .from(".sheet-f", { y: 16, opacity: 0, duration: 0.5 }, "-=0.1");
+      gsap.to(".hero .scene", { y: -12, duration: 3.2, repeat: -1, yoyo: true, ease: "sine.inOut" });
+      gsap.to(".orb.a", { x: 50, y: 30, duration: 6, repeat: -1, yoyo: true, ease: "sine.inOut" });
+      gsap.to(".orb.b", { x: -40, y: -26, duration: 7, repeat: -1, yoyo: true, ease: "sine.inOut" });
+      gsap.to(".hero .orb", { yPercent: 30, ease: "none", scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom top", scrub: true } });
+
+      const groups = [".stats-strip > div", ".feat", ".steps > div", ".split > div", ".flow > div", ".states", ".meta > div", ".faq details", ".sec h2", ".sec .sub", ".cta-band > *"];
+      groups.forEach((sel) => {
+        const els = gsap.utils.toArray<HTMLElement>(sel, scope);
+        if (!els.length) return;
+        gsap.set(els, { opacity: 0, y: 36 });
+        ScrollTrigger.batch(els, {
+          start: "top 90%",
+          once: true,
+          onEnter: (b) => gsap.to(b, { opacity: 1, y: 0, stagger: 0.12, duration: 0.7, ease: "power3.out", overwrite: true, clearProps: "transform,opacity" }),
+        });
+      });
+
+      gsap.utils.toArray<HTMLElement>(".stats-strip b", scope).forEach((el) => {
+        const end = parseInt(el.textContent || "0", 10);
+        const o = { v: 0 };
+        el.textContent = "0";
+        ScrollTrigger.create({
+          trigger: el, start: "top 92%", once: true,
+          onEnter: () => gsap.to(o, { v: end, duration: 1.4, ease: "power2.out", onUpdate: () => { el.textContent = String(Math.round(o.v)); } }),
+        });
+      });
+    }, root);
+    return () => ctx.revert();
+  }, []);
+
   async function tryDemo(email: string) {
     setBusy(true); setError("");
     try { const r = await api.login(email, "Demo12345"); setToken(r.token); onAuth(r.user); }
@@ -41,8 +87,9 @@ export default function Landing({ demo, onAuth, onPatient, onSignup }: { demo: b
     finally { setBusy(false); }
   }
   return (
-    <>
+    <div ref={root}>
       <section className="hero">
+        <i className="orb a" /><i className="orb b" />
         <div className="hero-in">
           <div>
             <span className="badge"><i />AI clinical-skills practice</span>
@@ -166,6 +213,6 @@ export default function Landing({ demo, onAuth, onPatient, onSignup }: { demo: b
         </div>
         <small>Prototype for the Meta Global AI Developer Hackathon. Not a medical device and not clinically validated.</small>
       </section>
-    </>
+    </div>
   );
 }

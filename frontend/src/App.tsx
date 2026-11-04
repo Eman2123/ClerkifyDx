@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { api, getToken, setToken, type Language, type User } from "./api";
 import Student from "./pages/Student";
 import Patient from "./pages/Patient";
@@ -8,8 +8,9 @@ import Admin from "./pages/Admin";
 import Doctor from "./pages/Doctor";
 import { MyConsultations } from "./pages/Consult";
 import { tr } from "./i18n";
+import { gsap, prefersReduced } from "./motion";
 import Landing from "./pages/Landing";
-import { ErrorBoundary, Logo, ThemeToggle, Wordmark, initials, useTheme } from "./ui";
+import { ErrorBoundary, Logo, ThemeToggle, UserMenu, Wordmark, useTheme } from "./ui";
 
 type Tab = "landing" | "student" | "history" | "patient" | "consults" | "doctor" | "admin" | "auth";
 
@@ -46,6 +47,17 @@ export default function App() {
     setTab("landing");
   }
 
+  useLayoutEffect(() => {
+    if (!ready || prefersReduced()) return;
+    gsap.from(".header", { y: -90, opacity: 0, duration: 0.8, ease: "power3.out", clearProps: "transform,opacity" });
+    gsap.from(".header nav button, .header .theme-btn, .header .lang, .header .row, .header .umenu", { y: -12, opacity: 0, stagger: 0.06, duration: 0.5, delay: 0.25, ease: "power2.out", clearProps: "transform,opacity" });
+  }, [ready]);
+
+  useLayoutEffect(() => {
+    if (!ready || prefersReduced()) return;
+    gsap.fromTo("#main", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", clearProps: "transform,opacity" });
+  }, [tab, ready]);
+
   if (!ready) return null;
 
   const goAuth = (m: "login" | "register") => { setAuthMode(m); setTab("auth"); };
@@ -81,11 +93,7 @@ export default function App() {
         </div>
         <ThemeToggle theme={theme} onChange={setTheme} />
         {user ? (
-          <div className="user">
-            <span className="avatar" aria-hidden="true">{initials(user.name)}</span>
-            <span>{user.name}<small>{user.role}</small></span>
-            <button className="secondary" onClick={logout}>Log out</button>
-          </div>
+          <UserMenu user={user} onLogout={logout} />
         ) : (
           <div className="row">
             <button className="secondary" onClick={() => goAuth("login")}>Log in</button>
