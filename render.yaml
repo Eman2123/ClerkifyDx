@@ -1,0 +1,24 @@
+# Render Blueprint: backend API. Frontend goes on Vercel (see README, "Deploy").
+services:
+  - type: web
+    name: clerkifydx-api
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build -w backend
+    startCommand: npm run start -w backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MODEL_API_KEY
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false          # your Vercel URL, e.g. https://clerkifydx.vercel.app
+      - key: ALLOW_DEMO_SEED # public demo only: seeds shared demo accounts + shows "Try demo" buttons
+        value: "true"
+      - key: DB_PATH
+        value: ./data/clerkifydx.db

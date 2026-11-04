@@ -7,6 +7,15 @@ export interface CaseSummary {
   difficulty: Difficulty;
   title: string;
   presentation: string;
+  image?: { url: string; modality: string; alt: string; credit: string };
+}
+
+export interface ImageReading {
+  rating: "good" | "partial" | "needs_work";
+  correct: string[];
+  missed: string[];
+  teachingPoint: string;
+  imageMismatch: boolean;
 }
 
 export interface Feedback {
@@ -41,6 +50,10 @@ export interface User {
   verified: boolean;
 }
 
+/** Backend origin. Empty in local dev (Vite proxies /api); set VITE_API_URL for a separate backend (e.g. Render). */
+const API_BASE = ((import.meta.env.VITE_API_URL as string | undefined) ?? "").replace(/\/$/, "");
+export const apiUrl = (path: string) => `${API_BASE}${path}`;
+
 const TOKEN_KEY = "clerkifydx_token";
 export const getToken = () => localStorage.getItem(TOKEN_KEY);
 export const setToken = (t: string | null) => (t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY));
@@ -53,7 +66,7 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken();
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(apiUrl(`/api${path}`), {
     ...init,
     headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
   });
@@ -115,7 +128,9 @@ export const api = {
   learning: () => request<LearningHistory>("/me/learning"),
   records: () =>
     request<{ records: { id: string; createdAt: number; emergency: boolean; record: PatientRecord | null }[] }>("/me/records"),
-  health: () => request<{ ok: boolean; model: string; mockLlm: boolean }>("/health"),
+  health: () => request<{ ok: boolean; model: string; mockLlm: boolean; demo?: boolean }>("/health"),
+  readImage: (id: string, interpretation: string) =>
+    post<{ reading: ImageReading; disclaimer: string }>(`/simulation/${id}/image-read`, { interpretation }),
   cases: () => request<{ departments: string[]; cases: CaseSummary[] }>("/cases"),
   startSim: (caseId: string, language: Language) =>
     post<{ sessionId: string; case: CaseSummary; notice: string }>("/simulation/start", { caseId, language }),

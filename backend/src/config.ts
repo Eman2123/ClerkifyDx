@@ -2,9 +2,11 @@ import "dotenv/config";
 
 export const config = {
   port: Number(process.env.PORT ?? 4000),
-  corsOrigin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
+  corsOrigins: (process.env.CORS_ORIGIN ?? "http://localhost:5173").split(",").map((o) => o.trim().replace(/\/$/, "")),
   dbPath: process.env.DB_PATH ?? "./data/clerkifydx.db",
   jwtSecret: process.env.JWT_SECRET ?? "dev-only-secret-change-me",
+  // Public hackathon demo: seeds shared demo accounts at startup and shows "Try demo" buttons. Never enable with real users.
+  demoSeed: process.env.ALLOW_DEMO_SEED === "true",
   adminEmail: (process.env.ADMIN_EMAIL ?? "").toLowerCase(),
   adminPassword: process.env.ADMIN_PASSWORD ?? "",
   isProd: process.env.NODE_ENV === "production",
@@ -20,3 +22,7 @@ export const config = {
   },
 };
 ;
+
+if (config.isProd && config.jwtSecret === "dev-only-secret-change-me") {
+  throw new Error("Set JWT_SECRET in production");
+}

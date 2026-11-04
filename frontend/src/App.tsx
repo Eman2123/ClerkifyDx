@@ -16,6 +16,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>("auth");
   const [language, setLanguage] = useState<Language>("en");
   const [mock, setMock] = useState<boolean | null>(null);
+  const [demo, setDemo] = useState(false);
 
   const isLearner = user?.role === "student" || user?.role === "intern";
 
@@ -25,7 +26,7 @@ export default function App() {
   }
 
   useEffect(() => {
-    api.health().then((h) => setMock(h.mockLlm)).catch(() => setMock(null));
+    api.health().then((h) => { setMock(h.mockLlm); setDemo(!!h.demo); }).catch(() => setMock(null));
     if (!getToken()) return setReady(true);
     api
       .me()
@@ -83,7 +84,7 @@ export default function App() {
         <div className="banner">Your doctor account is pending verification. Professional features are not enabled yet.</div>
       )}
       <main>
-        {tab === "auth" && <Auth onAuth={enter} onSkip={() => setTab("patient")} />}
+        {tab === "auth" && <Auth onAuth={enter} onSkip={() => setTab("patient")} demo={demo} />}
         {tab === "student" && isLearner && <Student language={language} />}
         {tab === "history" && isLearner && <History />}
         {tab === "patient" && <Patient language={language} user={user} />}

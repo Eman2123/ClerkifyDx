@@ -16,6 +16,12 @@ export interface ClinicalCase {
   diagnosis: string;
   differentials: string[];
   learningPoints: string[];
+  /**
+   * Optional visual component. The file lives in backend/assets/cases/ and the case is hidden
+   * until that file exists. Use neutral file names: the URL is visible to the learner.
+   * `findings` is hidden from the learner and MUST match the actual image you add.
+   */
+  image?: { file: string; modality: string; alt: string; credit: string; findings: string[] };
 }
 
 /** Seed cases for the prototype. Real cases must be clinically reviewed before release. */
@@ -211,6 +217,84 @@ export const cases: ClinicalCase[] = [
     diagnosis: "Pulmonary tuberculosis (suspected)",
     differentials: ["Bacterial pneumonia", "Lung cancer", "Bronchiectasis", "HIV-related lung disease"],
     learningPoints: ["Cough over 2 weeks with weight loss and night sweats should prompt TB testing", "Ask about contacts and HIV status", "Confirm with sputum GeneXpert and chest X-ray"],
+  },
+  {
+    id: "med-pneumonia-img-001",
+    department: "Internal Medicine",
+    difficulty: "intermediate",
+    title: "Fever, cough and chest pain (with chest X-ray)",
+    presentation: "A 42-year-old trader comes to the outpatient clinic with 4 days of fever and cough. A chest X-ray was done at the hospital laboratory.",
+    patientProfile: "You are a 42-year-old man named Emeka, a market trader. Answer in first person.",
+    history: [
+      "Fever with chills for 4 days, started suddenly",
+      "Cough producing yellow-green, sometimes rusty sputum",
+      "Sharp pain on the right side of the chest, worse when breathing in deeply",
+      "Short of breath when climbing stairs, can still speak full sentences",
+      "No cough lasting more than 2 weeks before this, no night sweats, no weight loss, no known TB contact",
+      "Smokes about 5 cigarettes a day for 10 years; drinks alcohol occasionally",
+      "Has never had an HIV test; no known chronic illness; no regular medicines; no allergies",
+      "Took paracetamol and a local herbal mixture with little relief",
+    ],
+    keyQuestions: ["fever duration and onset", "cough duration and sputum", "pleuritic chest pain", "breathlessness", "haemoptysis", "TB contact/night sweats/weight loss", "smoking and alcohol", "HIV status", "leg swelling/calf pain/recent travel", "medications taken"],
+    redFlags: ["confusion", "fast breathing or inability to speak in full sentences", "bluish lips", "very low blood pressure"],
+    diagnosis: "Lobar (community-acquired) pneumonia",
+    differentials: ["Pulmonary tuberculosis", "Pulmonary embolism", "Pleural effusion/empyema", "Lung abscess", "Lung cancer"],
+    learningPoints: [
+      "Describe a chest X-ray systematically (patient, projection, then airways, breathing, circulation, diaphragm, everything else) before naming a diagnosis",
+      "Acute onset, fever, pleuritic pain and focal consolidation fit bacterial pneumonia; cough over 2 weeks should prompt TB testing",
+      "Use a severity score such as CURB-65 to decide on admission",
+      "Offer HIV testing when pneumonia or TB is in the differential",
+    ],
+    image: {
+      file: "case-img-a.jpg",
+      modality: "Chest X-ray (frontal)",
+      alt: "Frontal chest X-ray",
+      credit: "Add the source and licence of the image you place in backend/assets/cases/case-img-a.jpg",
+      findings: [
+        "Airspace consolidation confined to one lobe or zone of one lung",
+        "Air bronchograms visible within the consolidation",
+        "No large pleural effusion and no pneumothorax",
+      ],
+    },
+  },
+  {
+    id: "paeds-rash-img-001",
+    department: "Paediatrics",
+    difficulty: "simple",
+    title: "Child with fever and rash (with clinical photo)",
+    presentation: "A father brings his 4-year-old daughter because of fever for 4 days and a new rash that started today. A photo of the rash is shown.",
+    patientProfile: "You are the father of a 4-year-old girl named Ada. Answer as the father in first person.",
+    history: [
+      "Fever for 4 days, high, with a dry cough and runny nose",
+      "Red, watery eyes that are sensitive to light",
+      "Rash started today behind the ears and on the face and is now spreading to the chest",
+      "She is eating and drinking less than usual but still drinks fluids",
+      "No difficulty breathing, no convulsions, no neck stiffness, passing urine normally",
+      "She has not received the measles vaccine; other routine vaccines were partly missed",
+      "A child at a neighbour's house had a similar illness last week",
+      "No medicine allergies; no medicines other than paracetamol",
+    ],
+    keyQuestions: ["fever duration", "rash onset, site and spread", "cough, runny nose, red eyes", "contact with sick children", "immunisation status", "feeding and fluids", "difficulty breathing", "convulsions or drowsiness", "urine output", "mouth sores or ear discharge"],
+    redFlags: ["difficulty breathing", "convulsions or drowsiness", "unable to drink", "clouding of the eyes", "severe malnutrition"],
+    diagnosis: "Measles",
+    differentials: ["Rubella", "Scarlet fever", "Drug eruption", "Roseola", "Other viral exanthem"],
+    learningPoints: [
+      "Measles: fever, cough, coryza and conjunctivitis (the 3 Cs) before a rash that spreads from the face downward; look for Koplik spots",
+      "Give vitamin A, treat fever, keep fluids and nutrition up; isolate and notify per local guidelines",
+      "Watch for complications: pneumonia, otitis media, diarrhoea, encephalitis, eye damage",
+      "Check and complete the immunisation schedule, including measles vaccine",
+    ],
+    image: {
+      file: "case-img-b.jpg",
+      modality: "Clinical photograph (rash)",
+      alt: "Photograph of a child's skin rash",
+      credit: "Add the source and licence of the image you place in backend/assets/cases/case-img-b.jpg",
+      findings: [
+        "Red (erythematous) blotchy maculopapular rash",
+        "Lesions tend to run together (confluent) in places",
+        "Rash distribution on the face and/or trunk",
+      ],
+    },
   },
 ];
 

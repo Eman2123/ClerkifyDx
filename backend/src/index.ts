@@ -11,10 +11,13 @@ import { buildRecord, triageReply } from "./triage.js";
 import { AI_DISCLAIMER, EMERGENCY_MESSAGE, detectEmergency } from "./safety.js";
 import { login, loginSchema, optionalAuth, register, registerSchema, requireAuth, seedAdmin } from "./auth.js";
 import { consultations, profiles } from "./professional.js";
+import { caseAvailable, imageFilePath, publicImage, readImage } from "./visual.js";
+import { seedDemo } from "./demo.js";
 
 const app = express();
-app.use(helmet());
-app.use(cors({ origin: config.corsOrigin }));
+if (config.isProd) app.set("trust proxy", 1); // behind Render/Railway: needed for correct client IPs in rate limiting
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+app.use(cors({ origin: config.corsOrigins }));
 app.use(express.json({ limit: "100kb" }));
 
 // Brute-force protection on auth, and a cap on LLM-backed endpoints (cost control).
@@ -34,11 +37,12 @@ const publicCase = (c: (typeof cases)[number]) => ({
   difficulty: c.difficulty,
   title: c.title,
   presentation: c.presentation,
+  image: publicImage(c),
 });
 const caseTitle = (id: string) => cases.find((c) => c.id === id);
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, model: config.ai.model, mockLlm: config.ai.mock });
+  res.json({ ok: true, model: config.ai.model, mockLlm: config.ai.mock, demo: config.demoSeed });
 });
 
 // ---------- Auth ----------
@@ -66,6 +70,7 @@ const learner = requireAuth("student", "intern");
 app.get("/api/cases", learner, (req, res) => {
   const { department, difficulty } = req.query;
   const list = cases
+    .filter(caseAvailable)
     .filter((c) => !department || c.department === department)
     .filter((c) => !difficulty || c.difficulty === difficulty)
     .map(publicCase);
@@ -75,10 +80,32 @@ app.get("/api/cases", learner, (req, res) => {
 app.post("/api/simulation/start", learner, (req, res) => {
   const { caseId, language } = z.object({ caseId: z.string(), language: lang }).parse(req.body);
   const c = cases.find((x) => x.id === caseId);
-  if (!c) return res.status(404).json({ error: "Case not found" });
+  if (!c || !caseAvailable(c)) return res.status(404).json({ error: "Case not found" });
   const s = sims.create(req.user!.id, caseId, language);
   res.json({ sessionId: s.id, case: publicCase(c), notice: "This is a simulated patient for education only." });
 });
+
+// Case images: public on purpose (an <img> tag cannot send a bearer token). File names are neutral and never reveal the diagnosis.
+app.get("/api/case-images/:file", (req, res) => {
+  const known = cases.find((c) => c.image?.file === req.params.file);
+  const path = known && imageFilePath(known.image!.file);
+  if (!path) return res.status(404).json({ error: "Not found" });
+  res.set("Cache-Control", "public, max-age=86400");
+  res.sendFile(path);
+});
+
+app.post("/api/simulation/:id/image-read", learner, aiLimit, ah(async (req, res) => {
+  const { interpretation } = z.object({ interpretation: z.string().min(3).max(1500) }).parse(req.body);
+  const session = sims.get(req.params.id, req.user!.id);
+  if (!session) return res.status(404).json({ error: "Session not found" });
+  if (session.submitted) return res.status(409).json({ error: "This case was already submitted" });
+  const c = caseTitle(session.caseId)!;
+  if (!c.image || !caseAvailable(c)) return res.status(400).json({ error: "This case has no image" });
+  const reading = await readImage(c, interpretation, session.language);
+  session.transcript.push({ role: "learner", content: `[Image interpretation] ${interpretation}` });
+  sims.saveTranscript(session);
+  res.json({ reading, disclaimer: "AI feedback is a learning aid and may contain errors." });
+}));
 
 app.post("/api/simulation/:id/message", learner, aiLimit, ah(async (req, res) => {
   const { message } = z.object({ message: z.string().min(1).max(500) }).parse(req.body);
@@ -308,6 +335,7 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 seedAdmin();
+if (config.demoSeed) seedDemo(console.log);
 app.listen(config.port, () => {
   console.log(`ClerkifyDx API on :${config.port} (model: ${config.ai.model}, mock: ${config.ai.mock})`);
 });

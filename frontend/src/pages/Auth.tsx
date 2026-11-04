@@ -1,11 +1,32 @@
 import { useState } from "react";
 import { api, setToken, type Role, type User } from "../api";
 
-export default function Auth({ onAuth, onSkip }: { onAuth: (u: User) => void; onSkip: () => void }) {
+const DEMO_PASSWORD = "Demo12345";
+const DEMOS = [
+  { label: "Try as student", email: "student@clerkifydx.demo" },
+  { label: "Try as patient", email: "patient@clerkifydx.demo" },
+  { label: "Try as doctor", email: "doctor@clerkifydx.demo" },
+];
+
+export default function Auth({ onAuth, onSkip, demo }: { onAuth: (u: User) => void; onSkip: () => void; demo?: boolean }) {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [f, setF] = useState({ name: "", email: "", password: "", role: "student" as Exclude<Role, "admin"> });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  async function tryDemo(email: string) {
+    setBusy(true);
+    setError("");
+    try {
+      const r = await api.login(email, DEMO_PASSWORD);
+      setToken(r.token);
+      onAuth(r.user);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -53,6 +74,16 @@ export default function Auth({ onAuth, onSkip }: { onAuth: (u: User) => void; on
           {mode === "login" ? "Need an account?" : "Have an account?"}
         </button>
       </div>
+      {demo && (
+        <div className="demo">
+          <p className="muted">Judges and visitors: jump straight in with a shared demo account (no real patient data).</p>
+          <div className="row">
+            {DEMOS.map((d) => (
+              <button key={d.email} type="button" className="secondary" disabled={busy} onClick={() => tryDemo(d.email)}>{d.label}</button>
+            ))}
+          </div>
+        </div>
+      )}
       <p className="muted">
         Feeling unwell right now? <a href="#" onClick={(e) => { e.preventDefault(); onSkip(); }}>Use patient intake without an account</a>.
       </p>

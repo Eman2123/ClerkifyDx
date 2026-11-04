@@ -67,7 +67,7 @@ Diagnosis: ${c.diagnosis}
 Differentials: ${c.differentials.join(", ")}
 Key questions expected: ${c.keyQuestions.join("; ")}
 Red flags: ${c.redFlags.join("; ")}
-Learning points: ${c.learningPoints.join("; ")}`;
+Learning points: ${c.learningPoints.join("; ")}${c.image ? `\nImage findings (learner was asked to interpret the ${c.image.modality}): ${c.image.findings.join("; ")}` : ""}`;
 
   const user = `TRANSCRIPT:\n${transcript || "(no questions asked)"}
 

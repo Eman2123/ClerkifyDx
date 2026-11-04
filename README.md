@@ -17,6 +17,7 @@ ClerkifyDx tackles both sides:
 |---|---|---|
 | AI patient (`backend/src/simulation.ts`) | `muse-spark-1.3` via Meta Model API | Role-plays the patient from a hidden case script; reveals history only when asked |
 | Clerking feedback | `muse-spark-1.3` | Structured JSON feedback: strengths, omissions, missed red flags, reasoning |
+| Visual cases (`backend/src/visual.ts`) | `muse-spark-1.3` (image input) | Looks at a case image (X-ray / clinical photo) and gives feedback on the learner's reading against hidden reference findings; flags a likely image/case mismatch |
 | Patient intake (`backend/src/triage.ts`) | `muse-spark-1.3` | One-question-at-a-time intake in English / Pidgin; structured record for a clinician |
 
 All calls go through one small client, `backend/src/llm.ts`, using the Meta Model API's OpenAI-compatible Chat Completions endpoint (`https://api.meta.ai/v1/chat/completions`). We use the Standard-mode model ID (`muse-spark-1.3`), not the `-contributor` variant, so prompts are not used for training, which matters for patient-style data.
@@ -58,17 +59,26 @@ Without `MODEL_API_KEY` (or with `MOCK_LLM=true`) the backend runs in **mock mod
 | `MODEL_REASONING_EFFORT` | unset | Optional reasoning level |
 | `JWT_SECRET` | dev placeholder | **Set in production** |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | unset | Creates the first admin on startup |
-| `CORS_ORIGIN` | `http://localhost:5173` | Allowed frontend origin |
+| `CORS_ORIGIN` | `http://localhost:5173` | Allowed frontend origin(s), comma separated |
+| `ALLOW_DEMO_SEED` | unset | Public demo only: seeds shared demo accounts at startup and shows "Try demo" buttons |
+| `VITE_API_URL` (frontend) | empty | Backend origin when it is hosted separately |
 
 ### Demo accounts
 `npm run seed` creates (password `Demo12345`): `student@clerkifydx.demo`, `intern@clerkifydx.demo`, `patient@clerkifydx.demo`, `doctor@clerkifydx.demo`. The seed script refuses to run when `NODE_ENV=production`. Set `ADMIN_EMAIL` / `ADMIN_PASSWORD` first to also get an admin.
+
+## Deploy (live demo)
+- **Backend (Render):** New > Blueprint > pick this repo (`render.yaml`). Set `MODEL_API_KEY` and `CORS_ORIGIN` (your Vercel URL). `JWT_SECRET` is generated. Demo accounts are seeded at startup because the free-tier disk is ephemeral.
+- **Frontend (Vercel):** import the repo, set **Root Directory** to `frontend`, add env `VITE_API_URL` = your Render URL. `frontend/vercel.json` handles install, build and SPA rewrites.
+- The public demo uses shared demo accounts. Do not enter real patient data.
 
 ## Features
 - 9 seed cases across Paediatrics, Obstetrics, Surgery and Internal Medicine, with department and difficulty filters
 - AI patient simulation, then structured feedback; learning history with recurring omissions (`/api/me/learning`)
 - Patient intake with consent, English + Nigerian Pidgin, structured clinician summary
 - Doctor verification (MDCN number + specialty, admin review)
+- **Visual cases:** the learner studies a chest X-ray or clinical photo, types their reading, and Muse Spark (vision) critiques it. Cases appear once their image file is added (see `backend/assets/cases/README.md`)
 - Consultation requests; the doctor sees the patient summary only after accepting
+- One-click demo logins on the public demo (`ALLOW_DEMO_SEED=true`)
 
 ## API
 | Method | Path | Purpose |
@@ -96,13 +106,14 @@ Without `MODEL_API_KEY` (or with `MOCK_LLM=true`) the backend runs in **mock mod
 ## Honest limitations
 - Prototype, not a medical device and not clinically validated. Cases and red-flag rules are not yet reviewed by a clinical panel.
 - AI patient and feedback quality depend on the model and can be wrong; feedback is educational only.
+- Visual cases need reviewed, properly licensed images added by the maintainer; the AI feedback on images is a learning aid and can be wrong.
 - No real-time chat or video yet; "accepted" consultations do not yet have a communication channel.
 - SQLite is fine for a demo, not for multi-instance production.
 - Pidgin support is prompt-based and has not been evaluated with native-speaker clinicians.
 - Doctor verification is a manual admin check of a self-reported MDCN number; there is no registry lookup.
 
 ## Roadmap
-Real-time chat for accepted consultations, Postgres, scheduling, clinically reviewed case library and triage protocols, visual cases (images) for student interpretation, referrals to hospitals.
+Real-time chat for accepted consultations, Postgres, scheduling, clinically reviewed case library and triage protocols, more visual cases, voice intake with Muse Voice Transcribe, referrals to hospitals.
 
 ## License
 MIT, see [LICENSE](LICENSE).

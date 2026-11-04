@@ -45,3 +45,7 @@ ul.plain li { padding:8px 0; border-bottom:1px solid var(--line); }
 .tag.declined, .tag.cancelled { background:#fde0e0; color:#8a1f1f; }
 .filters { margin-bottom:12px; }
 .filters select { width:auto; }
+.imgcase { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid var(--line); }
+.imgcase img { width:100%; max-height:320px; object-fit:contain; background:#000; border-radius:8px; }
+.demo { margin-top:12px; padding-top:12px; border-top:1px dashed var(--line); }
+.demo .row { flex-wrap:wrap; }

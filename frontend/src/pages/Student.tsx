@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api, type CaseSummary, type Feedback, type Language } from "../api";
+import { api, apiUrl, type CaseSummary, type Feedback, type ImageReading, type Language } from "../api";
 
 interface Msg {
   from: "you" | "patient";
@@ -22,6 +22,8 @@ export default function Student({ language }: { language: Language }) {
     reveal: { diagnosis: string; differentials: string[]; learningPoints: string[] };
     disclaimer: string;
   } | null>(null);
+  const [imgText, setImgText] = useState("");
+  const [imgReading, setImgReading] = useState<ImageReading | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,6 +42,8 @@ export default function Student({ language }: { language: Language }) {
       setSession({ id: s.sessionId, c: s.case });
       setMsgs([{ from: "patient", text: s.case.presentation }]);
       setResult(null);
+      setImgText("");
+      setImgReading(null);
       setForm({ historySummary: "", diagnosis: "", differentials: "", reasoning: "" });
     } catch (e) {
       setError((e as Error).message);
@@ -55,6 +59,20 @@ export default function Student({ language }: { language: Language }) {
     try {
       const r = await api.simMessage(session.id, text);
       setMsgs((m) => [...m, { from: "patient", text: r.reply }]);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function checkImage() {
+    if (!session || !imgText.trim() || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const r = await api.readImage(session.id, imgText.trim());
+      setImgReading(r.reading);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -106,7 +124,7 @@ export default function Student({ language }: { language: Language }) {
         <div className="grid">
           {visible.map((c) => (
             <button key={c.id} className="card" onClick={() => start(c)}>
-              <span className={`tag ${c.difficulty}`}>{c.difficulty}</span>
+              <span className={`tag ${c.difficulty}`}>{c.difficulty}{c.image ? " · image" : ""}</span>
               <strong>{c.title}</strong>
               <small>{c.department}</small>
               <small className="muted">{c.presentation}</small>
@@ -122,6 +140,29 @@ export default function Student({ language }: { language: Language }) {
       <div className="panel">
         <h2>{session.c.title}</h2>
         <p className="muted">Simulated patient, for education only. Ask questions to take a history.</p>
+        {session.c.image && (
+          <div className="imgcase">
+            <img src={apiUrl(session.c.image.url)} alt={session.c.image.alt} />
+            <small className="muted">{session.c.image.modality}. {session.c.image.credit}</small>
+            <textarea
+              rows={3}
+              value={imgText}
+              onChange={(e) => setImgText(e.target.value)}
+              placeholder="Describe what you see in the image, then say what it suggests"
+            />
+            <button className="secondary" onClick={checkImage} disabled={busy || imgText.trim().length < 3}>Check my image reading</button>
+            {imgReading && (
+              <div className="feedback">
+                {imgReading.imageMismatch && <p className="error">The AI thinks this image may not match the case reference. Treat this feedback with caution.</p>}
+                <p><b>Rating:</b> {imgReading.rating.replace("_", " ")}</p>
+                <List title="You got right" items={imgReading.correct} />
+                <List title="You missed" items={imgReading.missed} />
+                <p><b>Teaching point:</b> {imgReading.teachingPoint}</p>
+                <p className="muted">AI feedback is a learning aid and may contain errors.</p>
+              </div>
+            )}
+          </div>
+        )}
         <div className="chat">
           {msgs.map((m, i) => (
             <div key={i} className={`bubble ${m.from}`}>

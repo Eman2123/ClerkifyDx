@@ -14,7 +14,31 @@ interface CompletionOptions {
  */
 export async function chat(messages: ChatMessage[], opts: CompletionOptions = {}): Promise<string> {
   if (config.ai.mock) return mockReply(messages, opts);
+  return complete(messages, opts);
+}
 
+/**
+ * Image understanding with Muse Spark (multimodal input). The image is sent as a base64 data URL.
+ * Docs: https://dev.meta.ai/docs/image-understanding
+ */
+export async function chatVision(system: string, text: string, imageDataUrl: string, opts: CompletionOptions = {}): Promise<string> {
+  if (config.ai.mock) return mockReply([{ role: "system", content: system }], opts);
+  return complete(
+    [
+      { role: "system", content: system },
+      {
+        role: "user",
+        content: [
+          { type: "text", text },
+          { type: "image_url", image_url: { url: imageDataUrl } },
+        ],
+      },
+    ],
+    opts,
+  );
+}
+
+async function complete(messages: unknown[], opts: CompletionOptions): Promise<string> {
   const body: Record<string, unknown> = {
     model: config.ai.model,
     messages,
@@ -63,6 +87,15 @@ export function parseJson<T>(text: string): T {
 function mockReply(messages: ChatMessage[], opts: CompletionOptions): string {
   if (opts.json) {
     const sys = messages[0]?.content ?? "";
+    if (sys.includes("image interpretation")) {
+      return JSON.stringify({
+        rating: "partial",
+        correct: ["[MOCK] You described the main abnormality"],
+        missed: ["[MOCK] Set MODEL_API_KEY for real image feedback"],
+        teachingPoint: "[MOCK] Use a systematic approach: describe before you diagnose.",
+        imageMismatch: false,
+      });
+    }
     if (sys.includes("clinical educator")) {
       return JSON.stringify({
         overallSummary: "[MOCK] Good start. Set MODEL_API_KEY for real AI feedback.",
