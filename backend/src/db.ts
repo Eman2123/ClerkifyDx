@@ -42,3 +42,28 @@ CREATE TABLE IF NOT EXISTS triage_sessions (
 );
 CREATE INDEX IF NOT EXISTS idx_triage_user ON triage_sessions(user_id, created_at DESC);
 `);
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS doctor_profiles (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  mdcn_number TEXT NOT NULL,
+  specialty TEXT NOT NULL,
+  bio TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','verified','rejected')),
+  reviewed_at INTEGER,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS consultations (
+  id TEXT PRIMARY KEY,
+  patient_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  doctor_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  triage_session_id TEXT NOT NULL REFERENCES triage_sessions(id) ON DELETE CASCADE,
+  reason TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'requested' CHECK (status IN ('requested','accepted','declined','completed','cancelled')),
+  doctor_note TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_cons_patient ON consultations(patient_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_cons_doctor ON consultations(doctor_id, created_at DESC);
+`);

@@ -79,7 +79,35 @@ export interface LearningHistory {
   }[];
 }
 
+export type ConsultStatus = "requested" | "accepted" | "declined" | "completed" | "cancelled";
+export interface Consultation {
+  id: string;
+  status: ConsultStatus;
+  reason: string;
+  doctorNote: string | null;
+  createdAt: number;
+  doctorName?: string;
+  specialty?: string | null;
+  patientName?: string;
+}
+export interface DoctorEntry { id: string; name: string; specialty: string; bio: string }
+export interface PendingDoctor { user_id: string; name: string; email: string; mdcn_number: string; specialty: string; bio: string; status: string }
+
 export const api = {
+  doctorProfile: () => request<{ profile: { status: string; specialty: string; mdcn_number: string } | null }>("/doctor/profile"),
+  saveDoctorProfile: (b: { mdcnNumber: string; specialty: string; bio: string }) =>
+    post<{ status: string; notice: string }>("/doctor/profile", b),
+  adminDoctors: (status = "pending") => request<{ doctors: PendingDoctor[] }>(`/admin/doctors?status=${status}`),
+  reviewDoctor: (userId: string, approve: boolean) => post<{ ok: boolean }>(`/admin/doctors/${userId}/review`, { approve }),
+  doctors: () => request<{ doctors: DoctorEntry[] }>("/doctors"),
+  requestConsult: (b: { doctorId: string; triageSessionId: string; reason: string; shareSummary: boolean }) =>
+    post<{ id: string; status: string; notice: string }>("/consultations", b),
+  consultations: () => request<{ consultations: Consultation[] }>("/consultations"),
+  consultation: (id: string) =>
+    request<Consultation & { record: PatientRecord | null; recordShared: boolean; notice: string }>(`/consultations/${id}`),
+  respondConsult: (id: string, action: "accept" | "decline" | "complete", note?: string) =>
+    post<{ status: ConsultStatus }>(`/consultations/${id}/respond`, { action, note }),
+  cancelConsult: (id: string) => post<{ status: string }>(`/consultations/${id}/cancel`, {}),
   register: (b: { email: string; password: string; name: string; role: Exclude<Role, "admin"> }) =>
     post<{ user: User; token: string }>("/auth/register", b),
   login: (email: string, password: string) => post<{ user: User; token: string }>("/auth/login", { email, password }),

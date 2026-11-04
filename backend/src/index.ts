@@ -9,7 +9,8 @@ import { sims, triages } from "./store.js";
 import { patientReply, reviewClerking } from "./simulation.js";
 import { buildRecord, triageReply } from "./triage.js";
 import { AI_DISCLAIMER, EMERGENCY_MESSAGE, detectEmergency } from "./safety.js";
-import { login, loginSchema, optionalAuth, register, registerSchema, requireAuth } from "./auth.js";
+import { login, loginSchema, optionalAuth, register, registerSchema, requireAuth, seedAdmin } from "./auth.js";
+import { consultations, profiles } from "./professional.js";
 
 const app = express();
 app.use(helmet());
@@ -212,6 +213,93 @@ app.get("/api/me/records", requireAuth("patient"), (req, res) => {
   });
 });
 
+// ---------- Doctors & admin verification ----------
+app.post("/api/doctor/profile", requireAuth("doctor"), (req, res) => {
+  const b = z
+    .object({ mdcnNumber: z.string().min(3).max(40), specialty: z.string().min(2).max(80), bio: z.string().max(600).default("") })
+    .parse(req.body);
+  profiles.upsert(req.user!.id, b.mdcnNumber, b.specialty, b.bio);
+  res.json({ status: "pending", notice: "Submitted. An administrator will check your registration before you are listed." });
+});
+
+app.get("/api/doctor/profile", requireAuth("doctor"), (req, res) => {
+  res.json({ profile: profiles.get(req.user!.id) ?? null });
+});
+
+app.get("/api/admin/doctors", requireAuth("admin"), (req, res) => {
+  const status = z.enum(["pending", "verified", "rejected"]).default("pending").parse(req.query.status ?? "pending");
+  res.json({ doctors: profiles.listByStatus(status) });
+});
+
+app.post("/api/admin/doctors/:userId/review", requireAuth("admin"), (req, res) => {
+  const { approve } = z.object({ approve: z.boolean() }).parse(req.body);
+  if (!profiles.review(req.params.userId, approve)) return res.status(404).json({ error: "Doctor profile not found" });
+  res.json({ ok: true });
+});
+
+/** Verified doctors only. No contact details are exposed. */
+app.get("/api/doctors", requireAuth("patient"), (req, res) => {
+  res.json({ doctors: profiles.directory(typeof req.query.specialty === "string" ? req.query.specialty : undefined) });
+});
+
+// ---------- Consultations (request -> doctor accepts/declines -> completed) ----------
+const consView = (c: NonNullable<ReturnType<typeof consultations.get>>) => ({
+  id: c.id, status: c.status, reason: c.reason, doctorNote: c.doctor_note, createdAt: c.created_at, updatedAt: c.updated_at,
+});
+
+app.post("/api/consultations", requireAuth("patient"), (req, res) => {
+  const b = z
+    .object({ doctorId: z.string(), triageSessionId: z.string(), reason: z.string().max(500).default(""), shareSummary: z.boolean() })
+    .parse(req.body);
+  if (!b.shareSummary) return res.status(400).json({ error: "You must agree to share your summary with this doctor." });
+  const session = triages.get(b.triageSessionId, req.user!.id);
+  if (!session || session.userId !== req.user!.id) return res.status(404).json({ error: "Intake session not found" });
+  if (session.emergency)
+    return res.status(409).json({ error: "Your intake flagged possible emergency symptoms. Please go to the nearest hospital now instead of booking an online consultation." });
+  if (!session.record) return res.status(409).json({ error: "Please finish your intake summary first." });
+  const doc = profiles.directory().find((d) => d.id === b.doctorId);
+  if (!doc) return res.status(404).json({ error: "Doctor not available" });
+  if (consultations.duplicateOpen(req.user!.id, doc.id, session.id)) return res.status(409).json({ error: "You already have an open request with this doctor." });
+  const id = consultations.create(req.user!.id, doc.id, session.id, b.reason);
+  res.status(201).json({ id, status: "requested", notice: "Request sent. No doctor has reviewed your case yet. If your symptoms get worse, go to a hospital." });
+});
+
+app.get("/api/consultations", requireAuth("patient", "doctor"), (req, res) => {
+  if (req.user!.role === "patient") {
+    return res.json({ consultations: consultations.forPatient(req.user!.id).map((c) => ({ ...consView(c), doctorName: c.doctor_name, specialty: c.specialty })) });
+  }
+  res.json({ consultations: consultations.forDoctor(req.user!.id).map((c) => ({ ...consView(c), patientName: c.patient_name })) });
+});
+
+app.get("/api/consultations/:id", requireAuth("doctor"), (req, res) => {
+  const c = consultations.get(req.params.id);
+  if (!c || c.doctor_id !== req.user!.id) return res.status(404).json({ error: "Not found" });
+  // Minimum necessary: the patient's summary is shared only after the doctor accepts.
+  const canSee = c.status === "accepted" || c.status === "completed";
+  const record = canSee ? (triages.getUnchecked(c.triage_session_id)?.record ?? null) : null;
+  res.json({ ...consView(c), reason: c.reason, record, recordShared: canSee, notice: "AI-generated patient summary. Verify with the patient." });
+});
+
+app.post("/api/consultations/:id/respond", requireAuth("doctor"), (req, res) => {
+  if (!req.user!.verified) return res.status(403).json({ error: "Your account is not verified yet" });
+  const { action, note } = z.object({ action: z.enum(["accept", "decline", "complete"]), note: z.string().max(1000).optional() }).parse(req.body);
+  const c = consultations.get(req.params.id);
+  if (!c || c.doctor_id !== req.user!.id) return res.status(404).json({ error: "Not found" });
+  const ok =
+    action === "accept" ? consultations.transition(c.id, ["requested"], "accepted", note)
+    : action === "decline" ? consultations.transition(c.id, ["requested"], "declined", note)
+    : consultations.transition(c.id, ["accepted"], "completed", note);
+  if (!ok) return res.status(409).json({ error: `Cannot ${action} a consultation that is ${c.status}` });
+  res.json({ status: consultations.get(c.id)!.status });
+});
+
+app.post("/api/consultations/:id/cancel", requireAuth("patient"), (req, res) => {
+  const c = consultations.get(req.params.id);
+  if (!c || c.patient_id !== req.user!.id) return res.status(404).json({ error: "Not found" });
+  if (!consultations.transition(c.id, ["requested", "accepted"], "cancelled")) return res.status(409).json({ error: `Cannot cancel a ${c.status} consultation` });
+  res.json({ status: "cancelled" });
+});
+
 // ---------- Errors ----------
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   if (err instanceof z.ZodError) return res.status(400).json({ error: "Invalid request", details: err.flatten() });
@@ -219,6 +307,7 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: "Something went wrong" });
 });
 
+seedAdmin();
 app.listen(config.port, () => {
   console.log(`ClerkifyDx API on :${config.port} (model: ${config.llama.model}, mock: ${config.llama.mock})`);
 });

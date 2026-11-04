@@ -5,6 +5,8 @@ export const config = {
   corsOrigin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
   dbPath: process.env.DB_PATH ?? "./data/clerkifydx.db",
   jwtSecret: process.env.JWT_SECRET ?? "dev-only-secret-change-me",
+  adminEmail: (process.env.ADMIN_EMAIL ?? "").toLowerCase(),
+  adminPassword: process.env.ADMIN_PASSWORD ?? "",
   isProd: process.env.NODE_ENV === "production",
   llama: {
     baseUrl: (process.env.LLAMA_API_BASE_URL ?? "https://api.llama.com/compat/v1").replace(/\/$/, ""),

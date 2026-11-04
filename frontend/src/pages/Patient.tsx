@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { api, type Language, type PatientRecord } from "../api";
+import { api, type Language, type PatientRecord, type User } from "../api";
+import { FindDoctor } from "./Consult";
 
 interface Msg {
   from: "you" | "ai";
@@ -7,7 +8,7 @@ interface Msg {
   emergency?: boolean;
 }
 
-export default function Patient({ language }: { language: Language }) {
+export default function Patient({ language, user }: { language: Language; user: User | null }) {
   const [consent, setConsent] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [disclaimer, setDisclaimer] = useState("");
@@ -113,6 +114,10 @@ export default function Patient({ language }: { language: Language }) {
           <p><b>Unknown:</b> {record.record.unknown.join(", ") || "-"}</p>
           <p><b>Preliminary urgency:</b> {record.record.suggestedUrgency.replace(/_/g, " ")}</p>
           <p className="muted">{record.notice}</p>
+          {user?.role === "patient" && record.record.suggestedUrgency !== "emergency_now" && sessionId && (
+            <FindDoctor triageSessionId={sessionId} />
+          )}
+          {!user && <p className="muted">Create a patient account to request a doctor consultation.</p>}
         </div>
       )}
     </section>

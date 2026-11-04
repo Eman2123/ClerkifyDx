@@ -87,6 +87,11 @@ export const triages = {
     if (r.user_id && r.user_id !== userId) return undefined;
     return triageFrom(r);
   },
+  /** Skips the owner check. Only call after a consultation's access rules have been verified. */
+  getUnchecked(id: string): TriageSession | undefined {
+    const r = db.prepare("SELECT * FROM triage_sessions WHERE id = ?").get(id) as TriageRow | undefined;
+    return r && triageFrom(r);
+  },
   save(s: TriageSession) {
     db.prepare("UPDATE triage_sessions SET messages = ?, emergency = ? WHERE id = ?").run(JSON.stringify(s.messages), s.emergency ? 1 : 0, s.id);
   },

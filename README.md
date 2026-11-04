@@ -15,6 +15,9 @@ AI-powered digital health platform: clinical case simulation for medical student
 - **Accounts & roles:** JWT auth (bcrypt), roles student/intern/patient/doctor/admin, role-based access, rate limiting, helmet. Doctors start unverified (pending credential check). Patient intake works without an account so emergency guidance is never blocked.
 - **Persistence & learning history:** SQLite (Node 22 built-in driver). Sessions, transcripts, feedback and records are stored per user; `/api/me/learning` shows progress and recurring omissions.
 
+- **Doctor verification:** doctors submit an MDCN number and specialty; an admin approves or rejects. Only verified doctors are listed. Set `ADMIN_EMAIL` / `ADMIN_PASSWORD` in `backend/.env` to create the first admin.
+- **Consultations:** a patient finishes intake, agrees to share the summary, and requests a verified doctor. Statuses are honest (`requested` -> `accepted` / `declined` -> `completed`, or `cancelled`) and never skip ahead. The doctor sees the patient summary only after accepting. Intakes flagged as emergencies cannot be turned into an online consultation.
+
 ## Quick start
 ```bash
 npm install
@@ -36,6 +39,12 @@ Set in `backend/.env`: `LLAMA_API_BASE_URL`, `LLAMA_API_KEY`, `LLAMA_MODEL`. Any
 | GET | `/api/me/learning` | learning history (student/intern) |
 | GET | `/api/me/records` | saved intake records (patient) |
 | GET | `/api/simulation/:id` | resume/review a past case |
+| POST/GET | `/api/doctor/profile` | doctor submits/reads verification details |
+| GET/POST | `/api/admin/doctors`, `/api/admin/doctors/:id/review` | admin verification |
+| GET | `/api/doctors` | verified doctor directory (patients) |
+| POST/GET | `/api/consultations` | request / list consultations |
+| POST | `/api/consultations/:id/respond` | doctor accept / decline / complete |
+| POST | `/api/consultations/:id/cancel` | patient cancels |
 | GET | `/api/cases` | list cases |
 | POST | `/api/simulation/start` | start a session |
 | POST | `/api/simulation/:id/message` | ask the AI patient |
@@ -45,4 +54,4 @@ Set in `backend/.env`: `LLAMA_API_BASE_URL`, `LLAMA_API_KEY`, `LLAMA_MODEL`. Any
 | POST | `/api/triage/:id/record` | structured clinician summary |
 
 ## Roadmap
-Admin verification of doctors, Postgres, clinician verification, patient-to-doctor connection, payments, clinically reviewed case library, clinician-approved triage protocols.
+Postgres, real-time chat/video for consultations, scheduling, payments, referrals to hospitals, clinically reviewed case library, clinician-approved triage protocols.

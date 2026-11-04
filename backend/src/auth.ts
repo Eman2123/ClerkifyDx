@@ -88,3 +88,14 @@ export function requireAuth(...roles: Role[]) {
     next();
   };
 }
+
+/** Creates the first admin from env vars (admins can never self-register). */
+export function seedAdmin() {
+  if (!config.adminEmail || !config.adminPassword) return;
+  const row = db.prepare("SELECT id FROM users WHERE email = ?").get(config.adminEmail);
+  if (row) return;
+  db.prepare("INSERT INTO users (id,email,name,password_hash,role,verified,created_at) VALUES (?,?,?,?,?,?,?)").run(
+    newId(), config.adminEmail, "Administrator", bcrypt.hashSync(config.adminPassword, 10), "admin", 1, Date.now(),
+  );
+  console.log(`Admin account created for ${config.adminEmail}`);
+}
