@@ -78,7 +78,7 @@ export default function App() {
           <button className="secondary" onClick={() => setTab("auth")}>Log in</button>
         )}
       </header>
-      {mock && <div className="banner">Demo mode: Llama key not set, AI replies are placeholders.</div>}
+      {mock && <div className="banner">Demo mode: Meta Model API key not set, AI replies are placeholders.</div>}
       {user?.role === "doctor" && !user.verified && (
         <div className="banner">Your doctor account is pending verification. Professional features are not enabled yet.</div>
       )}

@@ -38,7 +38,7 @@ const publicCase = (c: (typeof cases)[number]) => ({
 const caseTitle = (id: string) => cases.find((c) => c.id === id);
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, model: config.llama.model, mockLlm: config.llama.mock });
+  res.json({ ok: true, model: config.ai.model, mockLlm: config.ai.mock });
 });
 
 // ---------- Auth ----------
@@ -309,5 +309,5 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
 
 seedAdmin();
 app.listen(config.port, () => {
-  console.log(`ClerkifyDx API on :${config.port} (model: ${config.llama.model}, mock: ${config.llama.mock})`);
+  console.log(`ClerkifyDx API on :${config.port} (model: ${config.ai.model}, mock: ${config.ai.mock})`);
 });

@@ -8,10 +8,15 @@ export const config = {
   adminEmail: (process.env.ADMIN_EMAIL ?? "").toLowerCase(),
   adminPassword: process.env.ADMIN_PASSWORD ?? "",
   isProd: process.env.NODE_ENV === "production",
-  llama: {
-    baseUrl: (process.env.LLAMA_API_BASE_URL ?? "https://api.llama.com/compat/v1").replace(/\/$/, ""),
-    apiKey: process.env.LLAMA_API_KEY ?? "",
-    model: process.env.LLAMA_MODEL ?? "Llama-4-Maverick-17B-128E-Instruct-FP8",
-    mock: process.env.MOCK_LLM === "true" || !process.env.LLAMA_API_KEY,
+  // Meta Model API (Muse Spark). Docs: https://dev.meta.ai/docs
+  ai: {
+    baseUrl: (process.env.MODEL_API_BASE_URL ?? "https://api.meta.ai/v1").replace(/\/$/, ""),
+    apiKey: process.env.MODEL_API_KEY ?? "",
+    // "muse-spark-1.3" = Standard mode (prompts are not used for training). Don't use the "-contributor" IDs with patient data.
+    model: process.env.MODEL_NAME ?? "muse-spark-1.3",
+    // Optional: minimal | low | medium | high | xhigh | max. Unset = model default.
+    reasoningEffort: process.env.MODEL_REASONING_EFFORT ?? "",
+    mock: process.env.MOCK_LLM === "true" || !process.env.MODEL_API_KEY,
   },
 };
+;
